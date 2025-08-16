@@ -1,71 +1,255 @@
-# ai-agent-hooks README
+# 🔗 AI Agent Hooks
 
-This is the README for your extension "ai-agent-hooks". After writing up a brief description, we recommend including the following sections.
+**Automated event-driven AI agent hooks for Visual Studio Code**
 
-## Features
+Transform your development workflow with intelligent automation! AI Agent Hooks allows you to create smart hooks that automatically trigger AI-powered code modifications based on file events using natural language descriptions.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+## ✨ Features
 
-For example if there is an image subfolder under your extension project workspace:
+### 🤖 Natural Language Hook Creation
 
-\!\[feature X\]\(images/feature-x.png\)
+- Describe what you want in plain language
+- Example: _"Whenever I modify a Kotlin file, add KDoc comments to all functions"_
+- AI automatically generates the appropriate code modifications
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+### 🎯 Event-Driven Automation
 
-## Requirements
+- **File Save**: Trigger when files are saved
+- **File Change**: React to file modifications
+- **File Open**: Execute when files are opened
+- **File Create**: Respond to new file creation
+- **File Delete**: Handle file deletion events
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+### 🔧 Advanced Hook Management
 
-## Extension Settings
+- **Visual Hook Manager**: Easy-to-use WebView interface
+- **Real-time Status**: See when hooks are running
+- **Live Editing**: Modify hooks on-the-fly
+- **Pattern Matching**: Target specific file types with glob patterns
+- **Stop Control**: Cancel running hooks anytime
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+### 🛡️ Smart Safety Features
 
-For example:
+- **Anti-Recursion**: Prevents hooks from triggering themselves
+- **Cooldown System**: Configurable delays between executions
+- **Cross-Hook Protection**: Prevents hooks from triggering each other
+- **File Pattern Filtering**: Precise control over which files trigger hooks
 
-This extension contributes the following settings:
+### 🌐 Multiple AI Provider Support
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+- **OpenAI** (GPT-4, GPT-3.5)
+- **Anthropic** (Claude 3 Sonnet, Haiku)
+- **Ollama** (Local LLMs)
+- **Azure OpenAI**
 
-## Known Issues
+## 🚀 Quick Start
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+1. **Install the Extension**
 
-## Release Notes
+   ```bash
+   # Install from VSCode Marketplace or load as development extension
+   ```
 
-Users appreciate release notes as you update your extension.
+2. **Configure AI Provider**
 
-### 1.0.0
+   - Open Command Palette (`Ctrl+Shift+P`)
+   - Run `AI Agent Hooks: AI Provider auswählen`
+   - Choose your preferred AI provider and enter credentials
 
-Initial release of ...
+3. **Create Your First Hook**
 
-### 1.0.1
+   - Open Command Palette (`Ctrl+Shift+P`)
+   - Run `AI Agent Hooks: Hook Manager öffnen`
+   - Click "🚀 Create Hook"
+   - Fill in natural language description
+   - Select trigger event and file pattern
 
-Fixed issue #.
+4. **Watch the Magic Happen**
+   - Your hooks will automatically execute when conditions are met
+   - Monitor status in real-time through the Hook Manager
 
-### 1.1.0
+## 📋 Example Use Cases
 
-Added features X, Y, and Z.
+### 📝 Documentation Automation
 
----
+```
+Name: Kotlin KDoc Generator
+Description: "Whenever I change a Kotlin file, add KDoc comments to all functions"
+Trigger: File saved
+Pattern: **/*.kt
+```
 
-## Following extension guidelines
+### 🧪 Test Generation
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+```
+Name: JavaScript Test Creator
+Description: "When I create a new JS file, generate corresponding Jest test file"
+Trigger: File created
+Pattern: **/*.js
+```
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+### 🎨 Code Formatting
 
-## Working with Markdown
+```
+Name: Python Style Checker
+Description: "On every Python save, check code quality and add docstrings"
+Trigger: File saved
+Pattern: **/*.py
+```
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+### 📖 README Maintenance
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+```
+Name: Project Documentation
+Description: "When I create any file, update the README.md with project structure"
+Trigger: File created
+Pattern: **/*
+```
 
-## For more information
+## 📚 Extension Settings
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+Configure AI Agent Hooks through VSCode settings:
 
-**Enjoy!**
+### AI Provider Configuration
+
+```json
+{
+  "aiAgentHooks.provider": "openai",
+  "aiAgentHooks.openai.apiKey": "your-api-key",
+  "aiAgentHooks.openai.model": "gpt-4",
+  "aiAgentHooks.anthropic.apiKey": "your-claude-key",
+  "aiAgentHooks.anthropic.model": "claude-3-sonnet-20240229",
+  "aiAgentHooks.ollama.baseUrl": "http://localhost:11434",
+  "aiAgentHooks.ollama.model": "llama2",
+  "aiAgentHooks.azureOpenai.apiKey": "your-azure-key",
+  "aiAgentHooks.azureOpenai.baseUrl": "https://your-resource.openai.azure.com",
+  "aiAgentHooks.azureOpenai.model": "your-deployment-name"
+}
+```
+
+## 🎮 Commands
+
+| Command                              | Description                         |
+| ------------------------------------ | ----------------------------------- |
+| `AI Agent Hooks: Choose AI Provider` | Select and configure AI provider    |
+| `AI Agent Hooks: Test AI Provider`   | Test current AI provider connection |
+| `AI Agent Hooks: Open Hook Manager`  | Open visual Hook Manager interface  |
+
+## 🏗️ Architecture
+
+### Core Components
+
+- **HookManager**: Central hook lifecycle management
+- **HookExecutor**: Event listening and hook execution
+- **ProviderManager**: AI provider abstraction layer
+- **WebView Provider**: Visual interface for hook management
+- **FileUtils**: Cross-platform file operations
+
+### Hook Lifecycle
+
+1. **Registration**: Active hooks register event listeners
+2. **Triggering**: File events trigger pattern matching
+3. **Execution**: AI provider processes natural language
+4. **Application**: Code changes applied to target files
+5. **Completion**: Status updates sent to WebView
+
+## 🧪 Testing
+
+Comprehensive test suite with **63 passing tests**:
+
+```bash
+npm test                    # Run all tests
+npm run compile            # Compile TypeScript
+npm run lint              # Check code style
+```
+
+### Test Coverage
+
+- ✅ Hook Management (CRUD operations, persistence)
+- ✅ Hook Execution (triggers, patterns, cooldowns)
+- ✅ AI Provider Integration (all provider types)
+- ✅ WebView Communication (real-time updates)
+- ✅ File Operations (cross-platform compatibility)
+
+## 🔒 Security & Safety
+
+### Built-in Protection
+
+- **No Secret Logging**: API keys never appear in logs
+- **Local Storage**: Hooks stored locally in VSCode settings
+- **Permission Control**: Only modifies files based on explicit patterns
+- **Execution Limits**: Cooldown prevents runaway executions
+
+### Best Practices
+
+- Start with simple, specific hooks
+- Use narrow file patterns (`**/*.js` vs `**/*`)
+- Test hooks on small projects first
+- Regular backup of important code
+
+## 🐛 Known Issues
+
+The current hook system implements simple prompt-response patterns rather than sophisticated AI agent workflows. This results in several limitations:
+
+Context Awareness
+
+- Limited Scope: Hooks only analyze the single triggered file, missing broader project context
+- No Project Understanding: Cannot analyze folder structures, related files, or project dependencies
+- Static Processing: No dynamic exploration of codebase or adaptive reasoning based on discoveries
+
+Missing Agent Capabilities
+
+- No Multi-Step Planning: Cannot break down complex tasks into logical sub-steps
+- No Tool Integration: Cannot use workspace tools like ls, find, grep for context gathering
+- No Cross-File Analysis: Cannot read related files (tests, configs, documentation) to inform decisions
+- No Iterative Refinement: Cannot analyze results and adjust approach based on intermediate outcomes
+
+Examples of Current Limitations
+
+Current: Simple transformation\
+"Add JSDoc to this function" → Modifies single file
+
+Missing: Complex agent workflow\
+ "Refactor this component following project patterns" →
+  1. Analyze project structure 
+  2. Find similar components 
+  3. Extract common patterns 
+  4. Apply consistent architecture 
+  5. Update related tests and docs
+
+Impact on Use Cases
+
+- Architecture Decisions: Cannot analyze project patterns for consistent refactoring
+- Smart Test Generation: Cannot understand existing test patterns and file relationships
+- Documentation Sync: Cannot cross-reference multiple files for comprehensive docs
+- Code Migration: Cannot analyze dependencies and impact across multiple files
+
+## 📈 Roadmap
+
+- 🔮 **v1.1.0**: TBD
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our contributing guidelines:
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Run tests (`npm test`)
+4. Commit changes (`git commit -m 'Add amazing feature'`)
+5. Push to branch (`git push origin feature/amazing-feature`)
+6. Open Pull Request
+
+## 📄 License
+
+This project is licensed under the **GNU General Public License v3.0 (GPLv3)**.  
+See the [LICENSE](./LICENSE) file for full license details.
+
+© 2025 sockethunter. All rights reserved.
+
+**Note:** If you modify or redistribute this project, the source code must remain under GPLv3, and my name as the original author must be retained.
+
+## 💖 Support
+
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/sockethunter/vscode-ai-agent-hooks/issues)
+- 💡 **Feature Requests**: [GitHub Discussions](https://github.com/sockethunter/vscode-ai-agent-hooks/discussions)
+- 📧 **Email**: mert246@proton.me
