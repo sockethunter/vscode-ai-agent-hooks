@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+    <title>AI Agent Hook Manager</title>
+    <link rel="stylesheet" href="{{cssPath}}">
+</head>
+<body>
+    <div class="header">
+        <h1>🔗 AI Agent Hook Manager</h1>
+        <p>Create and manage intelligent hooks that automatically react to file events.</p>
+    </div>
+
+    <div class="create-hook-section">
+        <h2>📝 Create a New Hook</h2>
+        <form id="hookForm">
+            <div class="form-group">
+                <label for="hookName">Hook Name:</label>
+                <input type="text" id="hookName" placeholder="e.g. Kotlin KDoc Adder" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="naturalLanguage">Description in Natural Language:</label>
+                <textarea id="naturalLanguage" rows="3" 
+                    placeholder="e.g. Whenever I modify a Kotlin file, add KDoc comments to all functions"
+                    required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="trigger">Trigger Event:</label>
+                <select id="trigger" required>
+                    <option value="">Select trigger...</option>
+                    <option value="onDidSaveTextDocument">File saved</option>
+                    <option value="onDidChangeTextDocument">File changed</option>
+                    <option value="onDidOpenTextDocument">File opened</option>
+                    <option value="onDidCreateFiles">File created</option>
+                    <option value="onDidDeleteFiles">File deleted</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="filePattern">File Pattern (optional):</label>
+                <input type="text" id="filePattern" placeholder="e.g. **/*.kt, **/*.js, **/*.py">
+            </div>
+
+            <button type="submit">🚀 Create Hook</button>
+            <button type="button" onclick="showExamples()">💡 Show Examples</button>
+        </form>
+
+        <div id="examples" class="example-templates" style="display: none;">
+            <h4>📋 Example Templates:</h4>
+            <div class="template-example">
+                <strong>Kotlin KDoc:</strong> "Whenever I change a Kotlin file, add KDoc comments"
+            </div>
+            <div class="template-example">
+                <strong>JavaScript JSDoc:</strong> "On every JavaScript change, create JSDoc for all functions"
+            </div>
+            <div class="template-example">
+                <strong>Python Docstrings:</strong> "When I save Python code, add docstrings"
+            </div>
+            <div class="template-example">
+                <strong>Code Review:</strong> "On every saved file, check code quality and style"
+            </div>
+        </div>
+    </div>
+
+    <div class="hook-list">
+        <h2>🎯 Active Hooks</h2>
+        <div id="hooksList">
+            <p id="noHooks" class="no-hooks">
+                No hooks created yet. Create your first hook above!
+            </p>
+        </div>
+    </div>
+
+    <script src="{{scriptPath}}"></script>
+</body>
+</html>

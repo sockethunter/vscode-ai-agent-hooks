@@ -3,6 +3,7 @@
   "displayName": "AI Agent Hooks",
   "description": "Automated event-driven AI agent hooks for VSCode",
   "version": "0.0.1",
+  "publisher": "ai-agent-hooks",
   "engines": {
     "vscode": "^1.103.0"
   },
@@ -14,10 +15,71 @@
   "contributes": {
     "commands": [
       {
-        "command": "ai-agent-hooks.helloWorld",
-        "title": "Hello World"
+        "command": "ai-agent-hooks.selectProvider",
+        "title": "AI Provider auswählen",
+        "category": "AI Agent Hooks"
+      },
+      {
+        "command": "ai-agent-hooks.testProvider",
+        "title": "AI Provider testen",
+        "category": "AI Agent Hooks"
+      },
+      {
+        "command": "ai-agent-hooks.manageHooks",
+        "title": "Hook Manager öffnen",
+        "category": "AI Agent Hooks"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "AI Agent Hooks",
+      "properties": {
+        "aiAgentHooks.provider": {
+          "type": "string",
+          "enum": ["openai", "anthropic", "ollama", "azure-openai"],
+          "description": "Aktuell gewählter AI Provider"
+        },
+        "aiAgentHooks.openai.apiKey": {
+          "type": "string",
+          "description": "OpenAI API Key"
+        },
+        "aiAgentHooks.openai.model": {
+          "type": "string",
+          "default": "gpt-4",
+          "description": "OpenAI Modell"
+        },
+        "aiAgentHooks.anthropic.apiKey": {
+          "type": "string",
+          "description": "Anthropic API Key"
+        },
+        "aiAgentHooks.anthropic.model": {
+          "type": "string",
+          "default": "claude-3-sonnet-20240229",
+          "description": "Anthropic Modell"
+        },
+        "aiAgentHooks.ollama.baseUrl": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Ollama Base URL"
+        },
+        "aiAgentHooks.ollama.model": {
+          "type": "string",
+          "default": "llama2",
+          "description": "Ollama Modell"
+        },
+        "aiAgentHooks.azureOpenai.apiKey": {
+          "type": "string",
+          "description": "Azure OpenAI API Key"
+        },
+        "aiAgentHooks.azureOpenai.baseUrl": {
+          "type": "string",
+          "description": "Azure OpenAI Endpoint"
+        },
+        "aiAgentHooks.azureOpenai.model": {
+          "type": "string",
+          "description": "Azure OpenAI Deployment Name"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
