@@ -26,17 +26,31 @@ export class HookManager {
   private constructor(context: vscode.ExtensionContext) {
     this.context = context;
     this.hookExecutor = HookExecutor.getInstance();
-    // Load hooks asynchronously
-    this.loadHooks().catch(error => {
-      console.error("Error during initial hook loading:", error);
-    });
   }
 
   public static getInstance(context?: vscode.ExtensionContext): HookManager {
-    if (!HookManager.instance && context) {
+    if (!HookManager.instance) {
+      if (!context) {
+        throw new Error("HookManager not initialized. Context required for first initialization.");
+      }
       HookManager.instance = new HookManager(context);
     }
     return HookManager.instance;
+  }
+
+  public async initialize(): Promise<void> {
+    console.log("🚀 Initializing HookManager...");
+    
+    // Ensure storage directory exists
+    const storagePath = this.context.globalStorageUri.fsPath;
+    console.log(`📁 Extension storage path: ${storagePath}`);
+    await FileUtils.ensureDirectoryExists(storagePath);
+    
+    const hooksFilePath = this.getHooksFilePath();
+    console.log(`📁 Hooks file path: ${hooksFilePath}`);
+    
+    await this.loadHooks();
+    console.log("✅ HookManager initialization completed");
   }
 
   public getHooks(): Hook[] {
@@ -65,6 +79,7 @@ export class HookManager {
       this.hookExecutor.registerHook(hook);
     }
 
+    this.broadcastHookUpdate();
     vscode.window.showInformationMessage(
       `Hook "${hook.name}" wurde erfolgreich erstellt!`
     );
@@ -82,6 +97,7 @@ export class HookManager {
       }
       
       await this.saveHooks();
+      this.broadcastHookUpdate();
     }
   }
 
@@ -89,17 +105,59 @@ export class HookManager {
     this.hookExecutor.unregisterHook(hookId);
     this.hooks = this.hooks.filter((h) => h.id !== hookId);
     await this.saveHooks();
+    this.broadcastHookUpdate();
   }
 
   public async stopHookFromWebview(hookId: string): Promise<void> {
+    console.log(`⏹️ Stop request for hook: ${hookId}`);
     const hook = this.hooks.find((h) => h.id === hookId);
     if (hook) {
+      // Stop the actual execution in HookExecutor
+      this.hookExecutor.stopRunningHook(hookId);
+      
+      // Update status
       hook.isRunning = false;
       await this.saveHooks();
+      this.broadcastHookUpdate();
+      
+      vscode.window.showInformationMessage(
+        `⏹️ Hook "${hook.name}" stop requested`
+      );
     }
   }
 
+  public async updateHookFromWebview(hookId: string, data: any): Promise<void> {
+    const hook = this.hooks.find((h) => h.id === hookId);
+    if (!hook) {
+      throw new Error(`Hook with ID ${hookId} not found`);
+    }
+
+    // Unregister old hook first
+    this.hookExecutor.unregisterHook(hookId);
+
+    // Update hook properties
+    hook.name = data.name;
+    hook.description = data.naturalLanguage;
+    hook.naturalLanguage = data.naturalLanguage;
+    hook.trigger = data.trigger;
+    hook.filePattern = data.filePattern || "**/*";
+    hook.template = await this.generateTemplate(data);
+
+    await this.saveHooks();
+
+    // Re-register if active
+    if (hook.isActive) {
+      this.hookExecutor.registerHook(hook);
+    }
+
+    this.broadcastHookUpdate();
+    vscode.window.showInformationMessage(
+      `Hook "${hook.name}" wurde erfolgreich aktualisiert!`
+    );
+  }
+
   public updateHookStatus(hookId: string, isRunning: boolean, lastExecuted?: Date): void {
+    console.log(`🔄 Updating hook status: ${hookId} - Running: ${isRunning}`);
     const hook = this.hooks.find(h => h.id === hookId);
     if (hook) {
       hook.isRunning = isRunning;
@@ -107,7 +165,20 @@ export class HookManager {
         hook.lastExecuted = lastExecuted;
       }
       this.saveHooks();
+      this.broadcastHookUpdate();
+      console.log(`✅ Hook status updated and broadcast sent for: ${hook.name}`);
+    } else {
+      console.log(`❌ Hook with ID ${hookId} not found`);
     }
+  }
+
+  private broadcastHookUpdate(): void {
+    // Dynamic import to avoid circular dependencies
+    import("./views/hookManagerProvider").then(({ HookManagerProvider }) => {
+      HookManagerProvider.broadcastHookUpdate(this.hooks);
+    }).catch(error => {
+      console.error("Error broadcasting hook update:", error);
+    });
   }
 
   public async executeHook(hook: Hook, context: any): Promise<void> {

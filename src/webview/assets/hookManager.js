@@ -1,6 +1,7 @@
 class HookManagerUI {
     constructor() {
         this.vscode = acquireVsCodeApi();
+        this.editingHookId = null;
         this.initializeEventListeners();
         this.requestInitialData();
     }
@@ -24,10 +25,20 @@ class HookManagerUI {
             return;
         }
 
-        this.vscode.postMessage({
-            command: 'createHook',
-            data: formData
-        });
+        if (this.editingHookId) {
+            // Update existing hook
+            this.vscode.postMessage({
+                command: 'updateHook',
+                hookId: this.editingHookId,
+                data: formData
+            });
+        } else {
+            // Create new hook
+            this.vscode.postMessage({
+                command: 'createHook',
+                data: formData
+            });
+        }
 
         this.resetForm();
     }
@@ -65,6 +76,21 @@ class HookManagerUI {
         if (form) {
             form.reset();
         }
+        this.editingHookId = null;
+        this.updateFormButtonText();
+    }
+
+    updateFormButtonText() {
+        const submitButton = document.querySelector('#hookForm button[type="submit"]');
+        const cancelButton = document.getElementById('cancelEditBtn');
+        
+        if (submitButton) {
+            submitButton.textContent = this.editingHookId ? '💾 Update Hook' : '🚀 Create Hook';
+        }
+        
+        if (cancelButton) {
+            cancelButton.style.display = this.editingHookId ? 'inline-block' : 'none';
+        }
     }
 
     showError(message) {
@@ -78,21 +104,28 @@ class HookManagerUI {
 
     handleMessage(event) {
         const message = event.data;
+        console.log('📨 Received message in WebView:', message);
         
         switch (message.command) {
             case 'updateHooks':
+                console.log('🔄 Updating hooks with:', message.hooks);
                 this.renderHooks(message.hooks);
                 break;
             case 'hookCreated':
+                console.log('🎉 Hook created, requesting data');
                 this.requestInitialData();
                 break;
             case 'error':
+                console.log('❌ Error message:', message.message);
                 this.showError(message.message);
                 break;
+            default:
+                console.log('❓ Unknown message command:', message.command);
         }
     }
 
     renderHooks(hooks) {
+        this.currentHooks = hooks; // Store for edit functionality
         const hooksList = document.getElementById('hooksList');
         const noHooks = document.getElementById('noHooks');
 
@@ -138,6 +171,9 @@ class HookManagerUI {
                             ${toggleText}
                         </button>
                         ${stopButton}
+                        <button onclick="hookManager.editHook('${hook.id}')" class="secondary">
+                            ✏️ Edit
+                        </button>
                         <button onclick="hookManager.deleteHook('${hook.id}')" class="danger">
                             🗑️ Delete
                         </button>
@@ -198,6 +234,37 @@ class HookManagerUI {
             command: 'stopHook',
             hookId: hookId
         });
+    }
+
+    editHook(hookId) {
+        // Find hook in current hooks list
+        const hooks = this.currentHooks || [];
+        const hook = hooks.find(h => h.id === hookId);
+        
+        if (!hook) {
+            this.showError('Hook not found');
+            return;
+        }
+
+        // Populate form with hook data
+        document.getElementById('hookName').value = hook.name || '';
+        document.getElementById('naturalLanguage').value = hook.naturalLanguage || hook.description || '';
+        document.getElementById('trigger').value = hook.trigger || '';
+        document.getElementById('filePattern').value = hook.filePattern || '';
+
+        // Set editing mode
+        this.editingHookId = hookId;
+        this.updateFormButtonText();
+
+        // Scroll to form
+        const form = document.getElementById('hookForm');
+        if (form) {
+            form.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    cancelEdit() {
+        this.resetForm();
     }
 }
 

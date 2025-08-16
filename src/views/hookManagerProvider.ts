@@ -5,8 +5,12 @@ import * as path from "path";
 export class HookManagerProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "hookManager";
   private _view?: vscode.WebviewView;
+  private _panel?: vscode.WebviewPanel;
+  private static activeProviders: HookManagerProvider[] = [];
 
-  constructor(private readonly context: vscode.ExtensionContext) {}
+  constructor(private readonly context: vscode.ExtensionContext) {
+    HookManagerProvider.activeProviders.push(this);
+  }
 
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -22,6 +26,55 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.getHtmlForWebview();
     this.setupMessageHandling(webviewView.webview);
+    
+    // Clean up when view is disposed
+    webviewView.onDidDispose(() => {
+      const index = HookManagerProvider.activeProviders.indexOf(this);
+      if (index > -1) {
+        HookManagerProvider.activeProviders.splice(index, 1);
+      }
+    });
+  }
+
+  public setupWebviewPanel(panel: vscode.WebviewPanel) {
+    this._panel = panel;
+
+    panel.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [this.context.extensionUri],
+    };
+
+    panel.webview.html = this.getHtmlForWebview();
+    this.setupMessageHandling(panel.webview);
+    
+    // Send initial data after setup
+    setTimeout(() => {
+      this.handleGetHooks();
+    }, 100);
+    
+    // Clean up when panel is disposed
+    panel.onDidDispose(() => {
+      const index = HookManagerProvider.activeProviders.indexOf(this);
+      if (index > -1) {
+        HookManagerProvider.activeProviders.splice(index, 1);
+      }
+    });
+  }
+
+  public static broadcastHookUpdate(hooks: any[]): void {
+    console.log(`📡 Broadcasting hook update to ${HookManagerProvider.activeProviders.length} providers`);
+    HookManagerProvider.activeProviders.forEach((provider, index) => {
+      const webview = provider._view?.webview || provider._panel?.webview;
+      if (webview) {
+        console.log(`📤 Sending update to provider ${index}`);
+        webview.postMessage({
+          command: 'updateHooks',
+          hooks: hooks
+        });
+      } else {
+        console.log(`⚠️ Provider ${index} has no active webview`);
+      }
+    });
   }
 
   private getHtmlForWebview(): string {
@@ -202,6 +255,9 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
             case "stopHook":
               await this.handleStopHook(message.hookId);
               break;
+            case "updateHook":
+              await this.handleUpdateHook(message.hookId, message.data);
+              break;
             default:
               console.log("Unknown command:", message.command);
           }
@@ -224,7 +280,7 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
     try {
       // Dynamic import to avoid circular dependencies
       const { HookManager } = await import("../hookManager");
-      const hookManager = HookManager.getInstance(this.context);
+      const hookManager = HookManager.getInstance();
 
       await hookManager.createHookFromWebview(data);
 
@@ -245,12 +301,13 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
   }
 
   private async handleGetHooks() {
+    console.log("🔍 Handling getHooks request");
     try {
       const { HookManager } = await import("../hookManager");
-      const hookManager = HookManager.getInstance(this.context);
+      const hookManager = HookManager.getInstance();
       const hooks = hookManager.getHooks();
 
-      console.log("Sending hooks to webview:", hooks);
+      console.log(`📊 Found ${hooks.length} hooks:`, hooks);
 
       this.postMessage({
         command: "updateHooks",
@@ -264,7 +321,7 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
   private async handleToggleHook(hookId: string) {
     try {
       const { HookManager } = await import("../hookManager");
-      const hookManager = HookManager.getInstance(this.context);
+      const hookManager = HookManager.getInstance();
       await hookManager.toggleHookFromWebview(hookId);
 
       await this.handleGetHooks();
@@ -279,7 +336,7 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
   private async handleDeleteHook(hookId: string) {
     try {
       const { HookManager } = await import("../hookManager");
-      const hookManager = HookManager.getInstance(this.context);
+      const hookManager = HookManager.getInstance();
       await hookManager.deleteHookFromWebview(hookId);
 
       await this.handleGetHooks();
@@ -294,7 +351,7 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
   private async handleStopHook(hookId: string) {
     try {
       const { HookManager } = await import("../hookManager");
-      const hookManager = HookManager.getInstance(this.context);
+      const hookManager = HookManager.getInstance();
       await hookManager.stopHookFromWebview(hookId);
 
       await this.handleGetHooks();
@@ -306,10 +363,25 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private async handleUpdateHook(hookId: string, data: any) {
+    try {
+      const { HookManager } = await import("../hookManager");
+      const hookManager = HookManager.getInstance();
+      await hookManager.updateHookFromWebview(hookId, data);
+      await this.handleGetHooks();
+    } catch (error) {
+      this.postMessage({
+        command: "error",
+        message: `Error updating hook: ${error}`,
+      });
+    }
+  }
+
   private postMessage(message: any) {
-    if (this._view) {
+    const webview = this._view?.webview || this._panel?.webview;
+    if (webview) {
       console.log("Posting message to webview:", message);
-      this._view.webview.postMessage(message);
+      webview.postMessage(message);
     } else {
       console.log("No webview available to post message");
     }

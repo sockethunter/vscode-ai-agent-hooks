@@ -5,16 +5,32 @@ import { HookExecutor } from "./hookExecutor";
 import { HookManagerProvider } from "./views/hookManagerProvider";
 import { COMMANDS } from "./constants/commands";
 
-export function activate(context: vscode.ExtensionContext) {
-  console.log("AI Agent Hooks extension is now active!");
+export async function activate(context: vscode.ExtensionContext) {
+  console.log("🚀 AI Agent Hooks extension is now active!");
 
   // Initialize managers
+  console.log("📋 Initializing managers...");
   const providerManager = ProviderManager.getInstance();
   const hookManager = HookManager.getInstance(context);
   const hookExecutor = HookExecutor.getInstance();
 
   // Initialize provider from saved config
+  console.log("🔧 Initializing provider from config...");
   providerManager.initializeFromConfig();
+
+  // Wait for hooks to be loaded and registered
+  console.log("🔗 Initializing HookManager...");
+  await hookManager.initialize();
+  console.log("✅ Hook Manager initialized and hooks loaded");
+  
+  // Show active hooks count
+  const hooks = hookManager.getHooks();
+  console.log(`📊 Total hooks loaded: ${hooks.length}`);
+  const activeHooks = hooks.filter(h => h.isActive);
+  console.log(`⚡ Active hooks: ${activeHooks.length}`);
+  activeHooks.forEach(hook => {
+    console.log(`   - ${hook.name} (${hook.trigger}) - Pattern: ${hook.filePattern}`);
+  });
 
   // Note: HookManagerProvider will be instantiated per webview panel
 
@@ -72,16 +88,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       // Set up the webview content using the provider
       const provider = new HookManagerProvider(context);
-      const mockWebviewView = {
-        webview: panel.webview,
-        onDidDispose: panel.onDidDispose,
-        onDidChangeVisibility: panel.onDidChangeViewState,
-        visible: true,
-        show: () => panel.reveal(),
-        title: "Hook Manager",
-      } as any;
-
-      provider.resolveWebviewView(mockWebviewView, {} as any, {} as any);
+      provider.setupWebviewPanel(panel);
     }
   );
 

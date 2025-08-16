@@ -10,6 +10,8 @@ export class HookExecutor {
   private lastExecution: Map<string, number> = new Map(); // Track last execution time per file
   private readonly COOLDOWN_MS = 5000; // 5 seconds cooldown
   private processingFiles: Set<string> = new Set(); // Track files currently being processed
+  private hookGeneratedFiles: Set<string> = new Set(); // Track files modified by hooks to prevent cross-triggering
+  private runningHooks: Map<string, AbortController> = new Map(); // Track running hooks for cancellation
 
   private constructor() {
     this.providerManager = ProviderManager.getInstance();
@@ -24,7 +26,7 @@ export class HookExecutor {
 
   public registerHook(hook: Hook): void {
     console.log(
-      `🔧 Registering hook: ${hook.name} (${hook.id}) - Active: ${hook.isActive}, Trigger: ${hook.trigger}`
+      `🔧 Registering hook: ${hook.name} (${hook.id}) - Active: ${hook.isActive}, Trigger: ${hook.trigger}, Pattern: ${hook.filePattern}`
     );
 
     if (!hook.isActive) {
@@ -117,6 +119,16 @@ export class HookExecutor {
     this.disposeHookWatchers(hookId);
   }
 
+  public stopRunningHook(hookId: string): void {
+    const abortController = this.runningHooks.get(hookId);
+    if (abortController) {
+      console.log(`⏹️ Stopping running hook: ${hookId}`);
+      abortController.abort();
+    } else {
+      console.log(`❌ No running hook found with ID: ${hookId}`);
+    }
+  }
+
   private disposeHookWatchers(hookId: string): void {
     const watchers = this.fileWatchers.get(hookId);
     if (watchers) {
@@ -136,6 +148,15 @@ export class HookExecutor {
     console.log(
       `🎯 handleFileEvent called for hook: ${hook.name}, file: ${filePath}, event: ${eventType}`
     );
+
+    // Check if this file was recently modified by a hook (prevent cross-triggering)
+    if (this.hookGeneratedFiles.has(filePath)) {
+      console.log(
+        `🚫 File ${filePath} was recently modified by a hook, skipping to prevent cross-triggering`
+      );
+      this.hookGeneratedFiles.delete(filePath); // Remove from set after checking
+      return;
+    }
 
     // Prevent recursion: check if file is already being processed
     if (this.processingFiles.has(hookFileKey)) {
@@ -218,8 +239,8 @@ export class HookExecutor {
     }
 
     // Split multiple patterns by comma and trim
-    const patterns = hook.filePattern.split(',').map(p => p.trim());
-    
+    const patterns = hook.filePattern.split(",").map((p) => p.trim());
+
     for (const pattern of patterns) {
       if (this.matchesGlobPattern(filePath, pattern)) {
         console.log(`✅ File matches pattern: ${pattern}`);
@@ -234,48 +255,59 @@ export class HookExecutor {
   private matchesGlobPattern(filePath: string, pattern: string): boolean {
     // Simple glob matching implementation
     // Convert glob pattern to regex
-    
+
     // Normalize paths (use forward slashes)
-    const normalizedPath = filePath.replace(/\\/g, '/');
-    const normalizedPattern = pattern.replace(/\\/g, '/');
-    
-    console.log(`🔍 Matching path: ${normalizedPath} against pattern: ${normalizedPattern}`);
-    
+    const normalizedPath = filePath.replace(/\\/g, "/");
+    const normalizedPattern = pattern.replace(/\\/g, "/");
+
+    console.log(
+      `🔍 Matching path: ${normalizedPath} against pattern: ${normalizedPattern}`
+    );
+
     // Handle simple patterns first
     if (normalizedPattern === "**/*") {
       return true; // Match everything
     }
-    
+
     // Convert glob to regex
     let regexPattern = normalizedPattern
-      .replace(/\*\*/g, '.*')  // ** matches any directory depth
-      .replace(/\*/g, '[^/]*') // * matches any file/directory name (but not /)
-      .replace(/\?/g, '[^/]')  // ? matches single character (but not /)
-      .replace(/\./g, '\\.');  // Escape dots
-    
+      .replace(/\*\*/g, ".*") // ** matches any directory depth
+      .replace(/\*/g, "[^/]*") // * matches any file/directory name (but not /)
+      .replace(/\?/g, "[^/]") // ? matches single character (but not /)
+      .replace(/\./g, "\\."); // Escape dots
+
     // Ensure the pattern matches the end of the path
-    if (!regexPattern.startsWith('.*')) {
-      regexPattern = '.*' + regexPattern;
+    if (!regexPattern.startsWith(".*")) {
+      regexPattern = ".*" + regexPattern;
     }
-    if (!regexPattern.endsWith('$')) {
-      regexPattern = regexPattern + '$';
+    if (!regexPattern.endsWith("$")) {
+      regexPattern = regexPattern + "$";
     }
-    
-    const regex = new RegExp(regexPattern, 'i'); // Case insensitive
+
+    const regex = new RegExp(regexPattern, "i"); // Case insensitive
     const matches = regex.test(normalizedPath);
-    
+
     console.log(`🔍 Regex: ${regexPattern}, Result: ${matches}`);
     return matches;
   }
 
   public async executeHook(hook: Hook, context: any): Promise<void> {
-    try {
-      hook.isRunning = true;
-      hook.lastExecuted = new Date();
+    // Create abort controller for this execution
+    const abortController = new AbortController();
+    this.runningHooks.set(hook.id, abortController);
 
+    // Notify HookManager that hook is starting
+    this.notifyHookManager(hook.id, true, new Date());
+
+    try {
       vscode.window.showInformationMessage(
         `🔄 Hook "${hook.name}" is running...`
       );
+
+      // Check if hook was stopped before we start
+      if (abortController.signal.aborted) {
+        throw new Error("Hook execution was cancelled");
+      }
 
       const prompt = this.generatePrompt(hook, context);
 
@@ -284,17 +316,37 @@ export class HookExecutor {
         throw new Error("No AI provider configured");
       }
 
+      // Check again before making AI request
+      if (abortController.signal.aborted) {
+        throw new Error("Hook execution was cancelled");
+      }
+
       const response = await provider.sendMessage(prompt);
+
+      // Check again before applying changes
+      if (abortController.signal.aborted) {
+        throw new Error("Hook execution was cancelled");
+      }
 
       await this.applyChanges(context, response.content);
 
-      vscode.window.showInformationMessage(
-        `✅ Hook "${hook.name}" executed successfully!`
-      );
+      // Only show success if not cancelled
+      if (!abortController.signal.aborted) {
+        vscode.window.showInformationMessage(
+          `✅ Hook "${hook.name}" executed successfully!`
+        );
+      }
     } catch (error) {
-      vscode.window.showErrorMessage(`❌ Hook "${hook.name}" error: ${error}`);
+      if (abortController.signal.aborted) {
+        vscode.window.showWarningMessage(`⏹️ Hook "${hook.name}" was stopped`);
+      } else {
+        vscode.window.showErrorMessage(`❌ Hook "${hook.name}" error: ${error}`);
+      }
     } finally {
-      hook.isRunning = false;
+      // Clean up
+      this.runningHooks.delete(hook.id);
+      // Notify HookManager that hook is finished
+      this.notifyHookManager(hook.id, false);
     }
   }
 
@@ -322,6 +374,16 @@ export class HookExecutor {
     } else {
       prompt += `File: ${context.file}\n`;
       prompt += `Event: ${context.type}\n\n`;
+
+      if (context.type === "create" || context.type === "delete") {
+        prompt += `This is a file system event. The file was ${context.type}d.\n`;
+        prompt += `Workspace root: ${this.getWorkspaceRoot()}\n`;
+        prompt += `If you need to update a specific file (like README.md), start your response with:\n`;
+        prompt += `TARGET_FILE: README.md\n\n`;
+        prompt += `This will update the README.md in the workspace root directory.\n`;
+        prompt += `Then provide the complete new content for that file.\n`;
+        prompt += `If updating README.md, include the existing content and add your changes.\n\n`;
+      }
     }
 
     prompt += `Please return only the modified code, without extra explanations. `;
@@ -331,18 +393,119 @@ export class HookExecutor {
   }
 
   private async applyChanges(context: any, aiResponse: string): Promise<void> {
-    if (!context.content) {
+    if (
+      !context.content &&
+      context.type !== "create" &&
+      context.type !== "delete"
+    ) {
       console.log("AI Response:", aiResponse);
       return;
     }
 
     try {
       let newContent = aiResponse;
+
+      // Extract code from markdown blocks if present
       const codeBlockMatch = aiResponse.match(/```[\w]*\n([\s\S]*?)\n```/);
       if (codeBlockMatch) {
         newContent = codeBlockMatch[1];
       }
 
+      // For file system events, try to extract target file from AI response
+      if (
+        !context.content &&
+        (context.type === "create" || context.type === "delete")
+      ) {
+        const targetFileMatch = aiResponse.match(/TARGET_FILE:\s*([^\n\r]+)/i);
+        if (targetFileMatch) {
+          let targetFile = targetFileMatch[1].trim();
+          console.log(`📝 AI specified target file: ${targetFile}`);
+
+          // If it's a relative path, resolve it to workspace root
+          if (!targetFile.startsWith("/")) {
+            const workspaceRoot = this.getWorkspaceRoot();
+            if (workspaceRoot) {
+              targetFile = vscode.Uri.joinPath(
+                vscode.Uri.file(workspaceRoot),
+                targetFile
+              ).fsPath;
+            }
+          }
+
+          console.log(`📁 Resolved target file path: ${targetFile}`);
+
+          // Extract content after TARGET_FILE line
+          const contentAfterTarget = aiResponse
+            .replace(/TARGET_FILE:[^\n\r]*[\n\r]*/, "")
+            .trim();
+          console.log(
+            `📝 Content to write: ${contentAfterTarget.substring(0, 100)}...`
+          );
+
+          try {
+            // Create or update the target file
+            const fileUri = vscode.Uri.file(targetFile);
+            const edit = new vscode.WorkspaceEdit();
+
+            // Check if file exists
+            try {
+              const existingDoc = await vscode.workspace.openTextDocument(
+                fileUri
+              );
+              // File exists, replace content
+              const range = new vscode.Range(
+                existingDoc.positionAt(0),
+                existingDoc.positionAt(existingDoc.getText().length)
+              );
+              edit.replace(fileUri, range, contentAfterTarget);
+              console.log(
+                `📝 Replacing content in existing file: ${targetFile}`
+              );
+            } catch {
+              // File doesn't exist, create it
+              edit.createFile(fileUri, { ignoreIfExists: true });
+              edit.insert(
+                fileUri,
+                new vscode.Position(0, 0),
+                contentAfterTarget
+              );
+              console.log(`📄 Creating new file: ${targetFile}`);
+            }
+
+            await vscode.workspace.applyEdit(edit);
+
+            // Save the file
+            try {
+              const document = await vscode.workspace.openTextDocument(fileUri);
+              await document.save();
+              
+              // Mark this file as hook-generated to prevent cross-triggering
+              this.hookGeneratedFiles.add(targetFile);
+              console.log(`🔒 Marked ${targetFile} as hook-generated`);
+              
+              vscode.window.showInformationMessage(`📝 Updated ${targetFile}`);
+            } catch (saveError) {
+              console.error(`Error saving file ${targetFile}:`, saveError);
+              vscode.window.showErrorMessage(
+                `Could not save ${targetFile}: ${saveError}`
+              );
+            }
+
+            return;
+          } catch (error) {
+            console.error(`Error updating target file ${targetFile}:`, error);
+            vscode.window.showErrorMessage(
+              `Error updating ${targetFile}: ${error}`
+            );
+          }
+        }
+
+        // If all else fails, just show the response
+        vscode.window.showInformationMessage(`🤖 AI Response: ${aiResponse}`);
+        return;
+      }
+
+      // Normal file content replacement for text document events
       const document = await vscode.workspace.openTextDocument(context.file);
       const edit = new vscode.WorkspaceEdit();
       const range = new vscode.Range(
@@ -353,9 +516,24 @@ export class HookExecutor {
 
       await vscode.workspace.applyEdit(edit);
       await document.save();
+      
+      // Mark this file as hook-generated to prevent cross-triggering
+      this.hookGeneratedFiles.add(context.file);
+      console.log(`🔒 Marked ${context.file} as hook-generated`);
     } catch (error) {
       console.error("Error applying changes:", error);
       throw new Error(`Failed to apply changes: ${error}`);
+    }
+  }
+
+  private async notifyHookManager(hookId: string, isRunning: boolean, lastExecuted?: Date): Promise<void> {
+    try {
+      // Dynamic import to avoid circular dependencies
+      const { HookManager } = await import("./hookManager");
+      const hookManager = HookManager.getInstance();
+      hookManager.updateHookStatus(hookId, isRunning, lastExecuted);
+    } catch (error) {
+      console.error("Error notifying HookManager:", error);
     }
   }
 
@@ -377,13 +555,29 @@ export class HookExecutor {
     }
   }
 
+  private getWorkspaceRoot(): string | null {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (workspaceFolders && workspaceFolders.length > 0) {
+      return workspaceFolders[0].uri.fsPath;
+    }
+    return null;
+  }
+
   public dispose(): void {
+    // Stop all running hooks
+    this.runningHooks.forEach((controller, hookId) => {
+      console.log(`⏹️ Aborting running hook during dispose: ${hookId}`);
+      controller.abort();
+    });
+    this.runningHooks.clear();
+
     this.fileWatchers.forEach((watchers) => {
       watchers.forEach((watcher) => watcher.dispose());
     });
     this.fileWatchers.clear();
     this.lastExecution.clear();
     this.processingFiles.clear();
+    this.hookGeneratedFiles.clear();
     console.log(`🧹 HookExecutor disposed and cleaned up`);
   }
 }
