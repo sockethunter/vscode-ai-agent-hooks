@@ -6,7 +6,7 @@ import { HookManagerProvider } from "./views/hookManagerProvider";
 import { COMMANDS } from "./constants/commands";
 
 export async function activate(context: vscode.ExtensionContext) {
-  console.log("🚀 AI Agent Hooks extension is now active!");
+  console.log("🚀 HookFlow - AI Agent Hooks extension is now active!");
 
   // Initialize managers
   console.log("📋 Initializing managers...");
@@ -22,14 +22,16 @@ export async function activate(context: vscode.ExtensionContext) {
   console.log("🔗 Initializing HookManager...");
   await hookManager.initialize();
   console.log("✅ Hook Manager initialized and hooks loaded");
-  
+
   // Show active hooks count
   const hooks = hookManager.getHooks();
   console.log(`📊 Total hooks loaded: ${hooks.length}`);
-  const activeHooks = hooks.filter(h => h.isActive);
+  const activeHooks = hooks.filter((h) => h.isActive);
   console.log(`⚡ Active hooks: ${activeHooks.length}`);
-  activeHooks.forEach(hook => {
-    console.log(`   - ${hook.name} (${hook.trigger}) - Pattern: ${hook.filePattern}`);
+  activeHooks.forEach((hook) => {
+    console.log(
+      `   - ${hook.name} (${hook.trigger}) - Pattern: ${hook.filePattern}`
+    );
   });
 
   // Note: HookManagerProvider will be instantiated per webview panel
@@ -94,49 +96,61 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Command to configure MCP tools
   const configureMcpCommand = vscode.commands.registerCommand(
-    'ai-agent-hooks.configureMcp',
+    "ai-agent-hooks.configureMcp",
     async () => {
       try {
         const toolConfig = await hookManager.getProjectSpecificMcpTools();
-        
+
         if (toolConfig.available.length === 0) {
           vscode.window.showInformationMessage(
-            'No MCP tools available for this project. Make sure you have a workspace open.'
+            "No MCP tools available for this project. Make sure you have a workspace open."
           );
           return;
         }
 
         // Show tool selection with descriptions
-        const items = toolConfig.available.map(tool => ({
+        const items = toolConfig.available.map((tool) => ({
           label: tool,
-          description: toolConfig.descriptions[tool] || '',
-          picked: toolConfig.recommended.includes(tool)
+          description: toolConfig.descriptions[tool] || "",
+          picked: toolConfig.recommended.includes(tool),
         }));
 
         const selected = await vscode.window.showQuickPick(items, {
           canPickMany: true,
-          placeHolder: 'Select MCP tools to enable by default for new hooks',
-          title: 'Configure MCP Tools'
+          placeHolder: "Select MCP tools to enable by default for new hooks",
+          title: "Configure MCP Tools",
         });
 
         if (selected) {
-          const selectedTools = selected.map(item => item.label);
-          const config = vscode.workspace.getConfiguration('aiAgentHooks.mcp');
-          
+          const selectedTools = selected.map((item) => item.label);
+          const config = vscode.workspace.getConfiguration("aiAgentHooks.mcp");
+
           // Update default tools
-          await config.update('defaultTools', selectedTools, vscode.ConfigurationTarget.Workspace);
-          
+          await config.update(
+            "defaultTools",
+            selectedTools,
+            vscode.ConfigurationTarget.Workspace
+          );
+
           // Enable MCP if tools were selected
           if (selectedTools.length > 0) {
-            await config.update('enabled', true, vscode.ConfigurationTarget.Workspace);
+            await config.update(
+              "enabled",
+              true,
+              vscode.ConfigurationTarget.Workspace
+            );
           }
-          
+
           vscode.window.showInformationMessage(
-            `✅ MCP configuration updated! Default tools: ${selectedTools.join(', ')}`
+            `✅ MCP configuration updated! Default tools: ${selectedTools.join(
+              ", "
+            )}`
           );
         }
       } catch (error) {
-        vscode.window.showErrorMessage(`Failed to configure MCP tools: ${error}`);
+        vscode.window.showErrorMessage(
+          `Failed to configure MCP tools: ${error}`
+        );
       }
     }
   );
