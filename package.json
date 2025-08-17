@@ -2,7 +2,7 @@
   "name": "ai-agent-hooks",
   "displayName": "HookFlow - AI Agent Hooks",
   "description": "Automated event-driven AI agent hooks for VSCode",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "sockethunter",
   "icon": "images/mascot.png",
   "repository": {
