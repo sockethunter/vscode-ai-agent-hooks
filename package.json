@@ -33,6 +33,11 @@
         "command": "ai-agent-hooks.manageHooks",
         "title": "Open Hook Manager",
         "category": "AI Agent Hooks"
+      },
+      {
+        "command": "ai-agent-hooks.configureMcp",
+        "title": "Configure MCP Tools",
+        "category": "AI Agent Hooks"
       }
     ],
     "configuration": {
@@ -82,6 +87,40 @@
         "aiAgentHooks.azureOpenai.model": {
           "type": "string",
           "description": "Azure OpenAI Deployment Name"
+        },
+        "aiAgentHooks.mcp.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable MCP (Model Context Protocol) integration for advanced hook reasoning"
+        },
+        "aiAgentHooks.mcp.defaultTools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "mcp_filesystem_list",
+            "mcp_filesystem_read",
+            "mcp_search_find",
+            "mcp_git_status"
+          ],
+          "description": "Default MCP tools available for new hooks"
+        },
+        "aiAgentHooks.mcp.allowedTools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "mcp_filesystem_list",
+            "mcp_filesystem_read",
+            "mcp_filesystem_read_multiple",
+            "mcp_search_find",
+            "mcp_search_grep",
+            "mcp_git_status",
+            "mcp_git_log"
+          ],
+          "description": "All available MCP tools that can be enabled for hooks"
         }
       }
     }

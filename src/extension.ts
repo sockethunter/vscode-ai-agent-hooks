@@ -92,11 +92,61 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // Command to configure MCP tools
+  const configureMcpCommand = vscode.commands.registerCommand(
+    'ai-agent-hooks.configureMcp',
+    async () => {
+      try {
+        const toolConfig = await hookManager.getProjectSpecificMcpTools();
+        
+        if (toolConfig.available.length === 0) {
+          vscode.window.showInformationMessage(
+            'No MCP tools available for this project. Make sure you have a workspace open.'
+          );
+          return;
+        }
+
+        // Show tool selection with descriptions
+        const items = toolConfig.available.map(tool => ({
+          label: tool,
+          description: toolConfig.descriptions[tool] || '',
+          picked: toolConfig.recommended.includes(tool)
+        }));
+
+        const selected = await vscode.window.showQuickPick(items, {
+          canPickMany: true,
+          placeHolder: 'Select MCP tools to enable by default for new hooks',
+          title: 'Configure MCP Tools'
+        });
+
+        if (selected) {
+          const selectedTools = selected.map(item => item.label);
+          const config = vscode.workspace.getConfiguration('aiAgentHooks.mcp');
+          
+          // Update default tools
+          await config.update('defaultTools', selectedTools, vscode.ConfigurationTarget.Workspace);
+          
+          // Enable MCP if tools were selected
+          if (selectedTools.length > 0) {
+            await config.update('enabled', true, vscode.ConfigurationTarget.Workspace);
+          }
+          
+          vscode.window.showInformationMessage(
+            `✅ MCP configuration updated! Default tools: ${selectedTools.join(', ')}`
+          );
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Failed to configure MCP tools: ${error}`);
+      }
+    }
+  );
+
   // Register all commands
   context.subscriptions.push(
     selectProviderCommand,
     testProviderCommand,
-    manageHooksCommand
+    manageHooksCommand,
+    configureMcpCommand
   );
 
   // Clean up on deactivation
