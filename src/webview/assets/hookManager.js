@@ -2,8 +2,10 @@ class HookManagerUI {
     constructor() {
         this.vscode = acquireVsCodeApi();
         this.editingHookId = null;
+        this.availableMcpTools = [];
         this.initializeEventListeners();
         this.requestInitialData();
+        this.requestMcpTools();
     }
 
     initializeEventListeners() {
@@ -13,8 +15,29 @@ class HookManagerUI {
             hookForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
         }
 
+        // MCP toggle handling
+        const mcpEnabledCheckbox = document.getElementById('mcpEnabled');
+        if (mcpEnabledCheckbox) {
+            mcpEnabledCheckbox.addEventListener('change', (e) => this.handleMcpToggle(e));
+        }
+
         // Listen for messages from extension
         window.addEventListener('message', (event) => this.handleMessage(event));
+    }
+
+    handleMcpToggle(event) {
+        const mcpOptions = document.getElementById('mcpOptions');
+        const multiStepCheckbox = document.getElementById('multiStepEnabled');
+        
+        if (event.target.checked) {
+            mcpOptions.style.display = 'block';
+            // Auto-enable multi-step when MCP is enabled
+            if (multiStepCheckbox) {
+                multiStepCheckbox.checked = true;
+            }
+        } else {
+            mcpOptions.style.display = 'none';
+        }
     }
 
     handleFormSubmit(event) {
@@ -44,11 +67,21 @@ class HookManagerUI {
     }
 
     getFormData() {
+        // Get selected MCP tools
+        const selectedTools = [];
+        const toolCheckboxes = document.querySelectorAll('.mcp-tool-item input[type="checkbox"]:checked');
+        toolCheckboxes.forEach(checkbox => {
+            selectedTools.push(checkbox.value);
+        });
+
         return {
             name: document.getElementById('hookName')?.value || '',
             naturalLanguage: document.getElementById('naturalLanguage')?.value || '',
             trigger: document.getElementById('trigger')?.value || '',
-            filePattern: document.getElementById('filePattern')?.value || '**/*'
+            filePattern: document.getElementById('filePattern')?.value || '**/*',
+            mcpEnabled: document.getElementById('mcpEnabled')?.checked || false,
+            multiStepEnabled: document.getElementById('multiStepEnabled')?.checked || false,
+            allowedMcpTools: selectedTools
         };
     }
 
@@ -102,6 +135,10 @@ class HookManagerUI {
         this.vscode.postMessage({ command: 'getHooks' });
     }
 
+    requestMcpTools() {
+        this.vscode.postMessage({ command: 'getMcpTools' });
+    }
+
     handleMessage(event) {
         const message = event.data;
         console.log('📨 Received message in WebView:', message);
@@ -110,6 +147,10 @@ class HookManagerUI {
             case 'updateHooks':
                 console.log('🔄 Updating hooks with:', message.hooks);
                 this.renderHooks(message.hooks);
+                break;
+            case 'mcpTools':
+                console.log('🔧 Received MCP tools:', message.tools);
+                this.renderMcpTools(message.tools);
                 break;
             case 'hookCreated':
                 console.log('🎉 Hook created, requesting data');
@@ -184,18 +225,39 @@ class HookManagerUI {
                     <strong>Trigger:</strong> ${this.escapeHtml(hook.trigger)}
                     ${lastExecuted}
                 </div>
+                ${this.createMcpStatusHTML(hook)}
             </div>
         `;
     }
 
     getStatusClass(hook) {
-        if (hook.isRunning) return 'running';
+        if (hook.isRunning) {return 'running';}
         return hook.isActive ? 'active' : 'inactive';
     }
 
     getStatusIndicatorClass(hook) {
-        if (hook.isRunning) return 'status-running';
+        if (hook.isRunning) {return 'status-running';}
         return hook.isActive ? 'status-active' : 'status-inactive';
+    }
+
+    createMcpStatusHTML(hook) {
+        if (!hook.mcpEnabled) {
+            return '<div class="hook-mcp-status mcp-disabled">🔧 Standard Hook (simple prompt-response)</div>';
+        }
+
+        const toolsText = hook.allowedMcpTools && hook.allowedMcpTools.length > 0 
+            ? `Tools: ${hook.allowedMcpTools.join(', ')}`
+            : 'No specific tools configured';
+        
+        const multiStepText = hook.multiStepEnabled ? '⚡ Multi-step execution enabled' : '⚡ Single-step execution';
+        
+        return `
+            <div class="hook-mcp-status mcp-enabled">
+                🔧 <strong>MCP Enabled</strong> - Advanced reasoning with project context<br>
+                ${multiStepText}<br>
+                <small>${toolsText}</small>
+            </div>
+        `;
     }
 
     formatDate(dateString) {
@@ -246,11 +308,8 @@ class HookManagerUI {
             return;
         }
 
-        // Populate form with hook data
-        document.getElementById('hookName').value = hook.name || '';
-        document.getElementById('naturalLanguage').value = hook.naturalLanguage || hook.description || '';
-        document.getElementById('trigger').value = hook.trigger || '';
-        document.getElementById('filePattern').value = hook.filePattern || '';
+        // Populate form with hook data (including MCP settings)
+        this.populateFormForEdit(hook);
 
         // Set editing mode
         this.editingHookId = hookId;
@@ -265,6 +324,74 @@ class HookManagerUI {
 
     cancelEdit() {
         this.resetForm();
+    }
+
+    renderMcpTools(toolsData) {
+        this.availableMcpTools = toolsData;
+        const container = document.getElementById('mcpToolsContainer');
+        
+        if (!container) {return;}
+        
+        if (!toolsData || !toolsData.available || toolsData.available.length === 0) {
+            container.innerHTML = '<p class="loading">No MCP tools available for this project.</p>';
+            return;
+        }
+
+        const toolsHTML = toolsData.available.map(toolName => {
+            const description = toolsData.descriptions[toolName] || 'No description available';
+            const isRecommended = toolsData.recommended.includes(toolName);
+            
+            return `
+                <div class="mcp-tool-item">
+                    <input type="checkbox" 
+                           id="tool_${toolName}" 
+                           value="${toolName}"
+                           ${isRecommended ? 'checked' : ''}>
+                    <label for="tool_${toolName}" class="mcp-tool-label">
+                        <div class="mcp-tool-name">${toolName} ${isRecommended ? '⭐' : ''}</div>
+                        <div class="mcp-tool-description">${description}</div>
+                    </label>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = toolsHTML;
+    }
+
+    populateFormForEdit(hook) {
+        // Existing form population...
+        document.getElementById('hookName').value = hook.name || '';
+        document.getElementById('naturalLanguage').value = hook.naturalLanguage || hook.description || '';
+        document.getElementById('trigger').value = hook.trigger || '';
+        document.getElementById('filePattern').value = hook.filePattern || '';
+        
+        // MCP-specific form population
+        const mcpEnabled = document.getElementById('mcpEnabled');
+        const multiStepEnabled = document.getElementById('multiStepEnabled');
+        const mcpOptions = document.getElementById('mcpOptions');
+        
+        if (mcpEnabled) {
+            mcpEnabled.checked = hook.mcpEnabled || false;
+        }
+        
+        if (multiStepEnabled) {
+            multiStepEnabled.checked = hook.multiStepEnabled || false;
+        }
+        
+        // Show/hide MCP options based on mcpEnabled
+        if (mcpOptions) {
+            mcpOptions.style.display = hook.mcpEnabled ? 'block' : 'none';
+        }
+        
+        // Select the hook's allowed tools
+        if (hook.allowedMcpTools && hook.allowedMcpTools.length > 0) {
+            hook.allowedMcpTools.forEach(toolName => {
+                const checkbox = document.getElementById(`tool_${toolName}`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+        }
     }
 }
 

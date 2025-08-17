@@ -246,6 +246,9 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
             case "getHooks":
               await this.handleGetHooks();
               break;
+            case "getMcpTools":
+              await this.handleGetMcpTools();
+              break;
             case "toggleHook":
               await this.handleToggleHook(message.hookId);
               break;
@@ -384,6 +387,24 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
       webview.postMessage(message);
     } else {
       console.log("No webview available to post message");
+    }
+  }
+
+  private async handleGetMcpTools() {
+    try {
+      const { HookManager } = await import("../hookManager");
+      const hookManager = HookManager.getInstance();
+      const toolsData = await hookManager.getProjectSpecificMcpTools();
+      
+      this.postMessage({
+        command: "mcpTools",
+        tools: toolsData
+      });
+    } catch (error) {
+      this.postMessage({
+        command: "error",
+        message: `Error getting MCP tools: ${error}`,
+      });
     }
   }
 

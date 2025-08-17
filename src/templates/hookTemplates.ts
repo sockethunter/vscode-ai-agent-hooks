@@ -175,7 +175,7 @@ export class TemplateEngine {
         template.fileExtensions.includes(fileExtension) ||
         template.fileExtensions.includes(".*");
 
-      if (!extensionMatches) continue;
+      if (!extensionMatches) {continue;}
 
       // Check if natural language patterns match
       const patternMatches = template.naturalLanguagePatterns.some(

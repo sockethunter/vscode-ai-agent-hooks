@@ -2,10 +2,12 @@ import * as vscode from "vscode";
 import { Hook } from "./hookManager";
 import { ProviderManager } from "./providers/providerManager";
 import { TemplateEngine } from "./templates/hookTemplates";
+import { MultiStepExecutor } from "./mcp/multiStepExecutor";
 
 export class HookExecutor {
   private static instance: HookExecutor;
   private providerManager: ProviderManager;
+  private multiStepExecutor: MultiStepExecutor;
   private fileWatchers: Map<string, vscode.FileSystemWatcher[]> = new Map();
   private lastExecution: Map<string, number> = new Map(); // Track last execution time per file
   private readonly COOLDOWN_MS = 5000; // 5 seconds cooldown
@@ -15,6 +17,7 @@ export class HookExecutor {
 
   private constructor() {
     this.providerManager = ProviderManager.getInstance();
+    this.multiStepExecutor = MultiStepExecutor.getInstance();
   }
 
   public static getInstance(): HookExecutor {
@@ -309,6 +312,30 @@ export class HookExecutor {
         throw new Error("Hook execution was cancelled");
       }
 
+      // Check if this hook is configured for MCP multi-step execution
+      if (hook.mcpEnabled && hook.multiStepEnabled) {
+        console.log(`🚀 Using MCP multi-step execution for hook: ${hook.name}`);
+        const workspaceRoot = this.getWorkspaceRoot();
+        if (!workspaceRoot) {
+          throw new Error("No workspace root found for MCP execution");
+        }
+
+        await this.multiStepExecutor.executeHookWithMcp(
+          hook,
+          context.file,
+          workspaceRoot
+        );
+
+        // Only show success if not cancelled
+        if (!abortController.signal.aborted) {
+          vscode.window.showInformationMessage(
+            `✅ Hook "${hook.name}" executed successfully with MCP!`
+          );
+        }
+        return;
+      }
+
+      // Standard execution path
       const prompt = this.generatePrompt(hook, context);
 
       const provider = this.providerManager.getCurrentProvider();
