@@ -1,4 +1,4 @@
-# 🔗 AI Agent Hooks
+# 🔗 HookFlow - AI Agent Hooks
 
 **Automated event-driven AI agent hooks for Visual Studio Code**
 
@@ -54,20 +54,20 @@ Transform your development workflow with intelligent automation! AI Agent Hooks 
 2. **Configure AI Provider**
 
    - Open Command Palette (`Ctrl+Shift+P`)
-   - Run `AI Agent Hooks: Choose AI Provider`
+   - Run `HookFlow - AI Agent Hooks: Choose AI Provider`
    - Choose your preferred AI provider and enter credentials
 
 3. **Configure MCP Tools (Optional)**
 
    - Open Command Palette (`Ctrl+Shift+P`)
-   - Run `AI Agent Hooks: Configure MCP Tools`
+   - Run `HookFlow - AI Agent Hooks: Configure MCP Tools`
    - Select tools based on your project (Git tools, file operations, etc.)
    - This enables advanced multi-step reasoning for hooks
 
 4. **Create Your First Hook**
 
    - Open Command Palette (`Ctrl+Shift+P`)
-   - Run `AI Agent Hooks: Open Hook Manager`
+   - Run `HookFlow - AI Agent Hooks: Open Hook Manager`
    - Click "🚀 Create Hook"
    - Fill in natural language description
    - Select trigger event and file pattern

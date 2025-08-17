@@ -1,9 +1,10 @@
 {
   "name": "ai-agent-hooks",
-  "displayName": "AI Agent Hooks",
+  "displayName": "HookFlow - AI Agent Hooks",
   "description": "Automated event-driven AI agent hooks for VSCode",
   "version": "0.1.0",
   "publisher": "sockethunter",
+  "icon": "images/mascot.png",
   "repository": {
     "url": "https://github.com/sockethunter/vscode-ai-agent-hooks"
   },
@@ -22,26 +23,26 @@
       {
         "command": "ai-agent-hooks.selectProvider",
         "title": "Choose AI Provider",
-        "category": "AI Agent Hooks"
+        "category": "HookFlow - AI Agent Hooks"
       },
       {
         "command": "ai-agent-hooks.testProvider",
         "title": "Test AI Provider",
-        "category": "AI Agent Hooks"
+        "category": "HookFlow - AI Agent Hooks"
       },
       {
         "command": "ai-agent-hooks.manageHooks",
         "title": "Open Hook Manager",
-        "category": "AI Agent Hooks"
+        "category": "HookFlow - AI Agent Hooks"
       },
       {
         "command": "ai-agent-hooks.configureMcp",
         "title": "Configure MCP Tools",
-        "category": "AI Agent Hooks"
+        "category": "HookFlow - AI Agent Hooks"
       }
     ],
     "configuration": {
-      "title": "AI Agent Hooks",
+      "title": "HookFlow - AI Agent Hooks",
       "properties": {
         "aiAgentHooks.provider": {
           "type": "string",
