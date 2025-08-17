@@ -2,7 +2,7 @@
   "name": "ai-agent-hooks",
   "displayName": "AI Agent Hooks",
   "description": "Automated event-driven AI agent hooks for VSCode",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "sockethunter",
   "repository": {
     "url": "https://github.com/sockethunter/vscode-ai-agent-hooks"
@@ -45,7 +45,12 @@
       "properties": {
         "aiAgentHooks.provider": {
           "type": "string",
-          "enum": ["openai", "anthropic", "ollama", "azure-openai"],
+          "enum": [
+            "openai",
+            "anthropic",
+            "ollama",
+            "azure-openai"
+          ],
           "description": "Currently chosen AI provider"
         },
         "aiAgentHooks.openai.apiKey": {
