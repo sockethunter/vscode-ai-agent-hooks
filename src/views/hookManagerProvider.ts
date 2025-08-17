@@ -79,16 +79,24 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
 
   private getHtmlForWebview(): string {
     try {
-      // Load HTML template
+      // Load HTML template from out/ directory (compiled)
       const templatePath = path.join(
         this.context.extensionPath,
-        "src/webview/templates/hookManager.html"
+        "out/webview/templates/hookManager.html"
       );
       console.log(`📄 Loading HTML template from: ${templatePath}`);
+      console.log(`📁 Extension path: ${this.context.extensionPath}`);
+
+      // Check if template exists
+      if (!fs.existsSync(templatePath)) {
+        console.error(`❌ Template file does not exist: ${templatePath}`);
+        return this.getFallbackHtml();
+      }
 
       let html = fs.readFileSync(templatePath, "utf8");
+      console.log(`📋 Template loaded (${html.length} chars)`);
 
-      // Load CSS and JS assets
+      // Load CSS and JS assets from out/ directory
       const cssContent = this.loadAsset("hookManager.css");
       const jsContent = this.loadAsset("hookManager.js");
 
@@ -102,10 +110,10 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
         `<script>console.log('Hook Manager script loaded');\n${jsContent}</script>`
       );
 
-      console.log(`✅ HTML template processed successfully`);
+      console.log(`✅ HTML template processed successfully (final size: ${html.length} chars)`);
       return html;
     } catch (error) {
-      console.error("Error loading HTML template:", error);
+      console.error("❌ Error loading HTML template:", error);
       return this.getFallbackHtml();
     }
   }
@@ -114,13 +122,23 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
     try {
       const assetPath = path.join(
         this.context.extensionPath,
-        "src/webview/assets",
+        "out/webview/assets",
         fileName
       );
-      return fs.readFileSync(assetPath, "utf8");
+      console.log(`🔍 Trying to load asset from: ${assetPath}`);
+      
+      // Check if file exists
+      if (!fs.existsSync(assetPath)) {
+        console.error(`❌ Asset file does not exist: ${assetPath}`);
+        return `/* Asset ${fileName} not found at ${assetPath} */`;
+      }
+      
+      const content = fs.readFileSync(assetPath, "utf8");
+      console.log(`✅ Successfully loaded asset ${fileName} (${content.length} chars)`);
+      return content;
     } catch (error) {
-      console.error(`Error loading asset ${fileName}:`, error);
-      return `/* Error loading ${fileName} */`;
+      console.error(`❌ Error loading asset ${fileName}:`, error);
+      return `/* Error loading ${fileName}: ${error} */`;
     }
   }
 
@@ -174,9 +192,9 @@ export class HookManagerProvider implements vscode.WebviewViewProvider {
                 <p><strong>⚠️ Could not load template files.</strong></p>
                 <p>Expected paths:</p>
                 <ul>
-                    <li>src/webview/templates/hookManager.html</li>
-                    <li>src/webview/assets/hookManager.css</li>
-                    <li>src/webview/assets/hookManager.js</li>
+                    <li>out/webview/templates/hookManager.html</li>
+                    <li>out/webview/assets/hookManager.css</li>
+                    <li>out/webview/assets/hookManager.js</li>
                 </ul>
                 <p>Fallback interface available:</p>
             </div>

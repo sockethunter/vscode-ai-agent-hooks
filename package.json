@@ -135,7 +135,8 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ && npm run copy-assets",
+    "copy-assets": "mkdir -p out/webview && cp -r src/webview/assets out/webview/ && cp -r src/webview/templates out/webview/",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
