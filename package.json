@@ -68,7 +68,7 @@
         },
         "aiAgentHooks.anthropic.model": {
           "type": "string",
-          "default": "claude-3-sonnet-20240229",
+          "default": "claude-sonnet-4-20250514",
           "description": "Anthropic Modell"
         },
         "aiAgentHooks.ollama.baseUrl": {

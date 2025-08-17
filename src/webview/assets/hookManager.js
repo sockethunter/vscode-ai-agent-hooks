@@ -231,12 +231,12 @@ class HookManagerUI {
     }
 
     getStatusClass(hook) {
-        if (hook.isRunning) return 'running';
+        if (hook.isRunning) {return 'running';}
         return hook.isActive ? 'active' : 'inactive';
     }
 
     getStatusIndicatorClass(hook) {
-        if (hook.isRunning) return 'status-running';
+        if (hook.isRunning) {return 'status-running';}
         return hook.isActive ? 'status-active' : 'status-inactive';
     }
 
@@ -330,7 +330,7 @@ class HookManagerUI {
         this.availableMcpTools = toolsData;
         const container = document.getElementById('mcpToolsContainer');
         
-        if (!container) return;
+        if (!container) {return;}
         
         if (!toolsData || !toolsData.available || toolsData.available.length === 0) {
             container.innerHTML = '<p class="loading">No MCP tools available for this project.</p>';
