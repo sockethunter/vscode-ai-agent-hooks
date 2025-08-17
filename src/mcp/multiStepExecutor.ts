@@ -111,6 +111,7 @@ export class MultiStepExecutor {
       'mcp_filesystem_list': 'List directory contents',
       'mcp_filesystem_read': 'Read single file contents', 
       'mcp_filesystem_read_multiple': 'Read multiple files at once',
+      'mcp_filesystem_write': 'Write content to files',
       'mcp_search_find': 'Find files by glob pattern',
       'mcp_search_grep': 'Search text patterns in files',
       'mcp_git_status': 'Get git repository status',
@@ -122,6 +123,8 @@ export class MultiStepExecutor {
 TASK: ${hook.naturalLanguage}
 TRIGGERED FILE: ${context.triggeredFile}
 WORKSPACE: ${context.workspaceRoot}
+
+IMPORTANT: You must read and analyze the triggered file content thoroughly. Use the information from MCP tools to understand the code structure and generate meaningful output.
 
 AVAILABLE TOOLS:
 ${availableTools.map(tool => `- ${tool}: ${toolDescriptions[tool] || 'Available tool'}`).join('\n')}
@@ -154,12 +157,21 @@ OUTPUT TEMPLATE (copy this structure exactly):
     },
     {
       "type": "file_modification", 
-      "description": "Add copyright notice to files that don't have it"
+      "description": "Create class diagram markdown file with analyzed content",
+      "parameters": {
+        "files": ["docs/class-diagram.md"]
+      }
     }
   ]
 }
 
 Replace the example steps above with your actual plan for the task: "${hook.naturalLanguage}"
+
+IMPORTANT NOTES:
+- For file_modification steps, specify target files in parameters: {"files": ["path/to/file.md"]}
+- For creating new files, use mcp_filesystem_write tool
+- Ensure all generated content is in proper format (Markdown, JSON, etc.)
+- Be specific about file paths and content structure
 
 RESPOND WITH ONLY THE JSON OBJECT:`;
   }
@@ -345,32 +357,76 @@ Provide a detailed analysis and recommendations.
       .map(s => s.result)
       .join('\n\n');
 
-    // Read the current file
-    const document = await vscode.workspace.openTextDocument(plan.context.triggeredFile);
-    const currentContent = document.getText();
+    // Check if step parameters specify target files
+    const targetFiles = step.parameters?.files || [plan.context.triggeredFile];
+    
+    console.log(`📝 Modifying ${targetFiles.length} file(s)`);
 
-    const modificationPrompt = `
-TASK: Apply the planned modifications to the triggered file.
+    for (const filePath of targetFiles) {
+      await this.modifyIndividualFile(filePath, reasoningSteps, plan);
+    }
+  }
+
+  private async modifyIndividualFile(filePath: string, reasoningSteps: string, plan: ExecutionPlan): Promise<void> {
+    const pathModule = require('path');
+    const fs = require('fs').promises;
+    
+    try {
+      // Resolve file path relative to workspace root
+      let fullPath = filePath;
+      if (!pathModule.isAbsolute(filePath)) {
+        fullPath = pathModule.join(plan.context.workspaceRoot, filePath);
+      }
+
+      // Check if file exists, if not create it
+      let currentContent = '';
+      let document;
+      
+      try {
+        document = await vscode.workspace.openTextDocument(fullPath);
+        currentContent = document.getText();
+      } catch (error) {
+        // File doesn't exist, we'll create it
+        console.log(`📝 Creating new file: ${fullPath}`);
+        
+        // Ensure directory exists
+        const dir = pathModule.dirname(fullPath);
+        await fs.mkdir(dir, { recursive: true });
+        
+        // Create empty file first
+        await fs.writeFile(fullPath, '', 'utf8');
+        
+        // Now open it
+        document = await vscode.workspace.openTextDocument(fullPath);
+        currentContent = '';
+      }
+
+      const modificationPrompt = `
+TASK: Apply the planned modifications to the specified file.
 
 REASONING AND ANALYSIS:
 ${reasoningSteps}
 
+TARGET FILE: ${filePath}
 CURRENT FILE CONTENT:
 ${currentContent}
 
-FILE PATH: ${plan.context.triggeredFile}
+CONTEXT: You are creating/modifying the file at ${filePath}. 
+Use all the information from the reasoning and analysis steps above to generate appropriate content.
 
-Generate the complete modified content for this file. 
-Respond with ONLY the complete file content, no explanations or markdown formatting.
+IMPORTANT: Generate ONLY the complete file content for ${filePath}. No explanations, no markdown code blocks, just the raw file content.
 `;
 
-    try {
       const provider = this.providerManager.getCurrentProvider();
       if (!provider) {
         throw new Error("No AI provider configured");
       }
       const response = await provider.sendMessage(modificationPrompt);
       const modifiedContent = response.content;
+      
+      console.log(`🔍 AI Response for ${filePath}:`);
+      console.log(`📄 Generated content length: ${modifiedContent.length}`);
+      console.log(`📝 Content preview: ${modifiedContent.substring(0, 200)}...`);
       
       // Apply the modifications
       const edit = new vscode.WorkspaceEdit();
@@ -380,13 +436,16 @@ Respond with ONLY the complete file content, no explanations or markdown formatt
       );
       edit.replace(document.uri, fullRange, modifiedContent);
       
-      await vscode.workspace.applyEdit(edit);
+      const success = await vscode.workspace.applyEdit(edit);
+      if (!success) {
+        throw new Error(`Failed to apply workspace edit for ${fullPath}`);
+      }
+      
       await document.save();
-
-      console.log(`📝 File modified: ${plan.context.triggeredFile}`);
+      console.log(`✅ File successfully modified and saved: ${fullPath}`);
     } catch (error) {
-      console.error('File modification failed:', error);
-      throw new Error('Could not apply file modifications');
+      console.error(`File modification failed for ${filePath}:`, error);
+      throw new Error(`Could not apply file modifications to ${filePath}`);
     }
   }
 

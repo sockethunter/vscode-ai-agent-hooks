@@ -38,10 +38,11 @@ export class McpClient {
       schema: {
         type: 'object',
         properties: {
-          path: { type: 'string', description: 'Directory path to list' },
+          path: { type: 'string', description: 'Directory path to list (use this parameter)' },
+          directory: { type: 'string', description: 'Alternative to path parameter' },
           recursive: { type: 'boolean', description: 'Include subdirectories' }
         },
-        required: ['path']
+        required: []
       },
       handler: this.handleFilesystemList.bind(this)
     });
@@ -74,6 +75,21 @@ export class McpClient {
         required: ['paths']
       },
       handler: this.handleFilesystemReadMultiple.bind(this)
+    });
+
+    this.registerTool({
+      name: 'mcp_filesystem_write',
+      description: 'Write content to a file',
+      schema: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'File path to write to' },
+          content: { type: 'string', description: 'Content to write' },
+          encoding: { type: 'string', description: 'File encoding (default: utf8)' }
+        },
+        required: ['path', 'content']
+      },
+      handler: this.handleFilesystemWrite.bind(this)
     });
 
     // Search Tools
@@ -233,14 +249,20 @@ export class McpClient {
 
   // Tool Handlers
   private async handleFilesystemList(params: any): Promise<any> {
-    const { path, recursive = false, context } = params;
+    // Support both 'path' and 'directory' parameters for backward compatibility
+    const { path, directory, recursive = false, context } = params;
+    const targetPath = path || directory;
     const fs = require('fs').promises;
     const pathModule = require('path');
 
     try {
-      let fullPath = path;
-      if (!pathModule.isAbsolute(path)) {
-        fullPath = pathModule.join(context.workspaceRoot, path);
+      if (!targetPath) {
+        throw new Error('Missing required parameter: path or directory');
+      }
+      
+      let fullPath = targetPath;
+      if (!pathModule.isAbsolute(targetPath)) {
+        fullPath = pathModule.join(context.workspaceRoot, targetPath);
       }
 
       if (recursive) {
@@ -326,6 +348,35 @@ export class McpClient {
     }
 
     return results;
+  }
+
+  private async handleFilesystemWrite(params: any): Promise<any> {
+    const { path, content, encoding = 'utf8', context } = params;
+    const fs = require('fs').promises;
+    const pathModule = require('path');
+
+    try {
+      let fullPath = path;
+      if (!pathModule.isAbsolute(path)) {
+        fullPath = pathModule.join(context.workspaceRoot, path);
+      }
+
+      // Ensure directory exists
+      const dir = pathModule.dirname(fullPath);
+      await fs.mkdir(dir, { recursive: true });
+
+      // Write the file
+      await fs.writeFile(fullPath, content, encoding);
+      
+      return {
+        path: fullPath,
+        bytesWritten: content.length,
+        encoding,
+        success: true
+      };
+    } catch (error) {
+      throw new Error(`Failed to write file: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   private async handleSearchFind(params: any): Promise<any> {
