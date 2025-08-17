@@ -22,11 +22,12 @@ Transform your development workflow with intelligent automation! AI Agent Hooks 
 
 ### 🔧 Advanced Hook Management
 
-- **Visual Hook Manager**: Easy-to-use WebView interface
-- **Real-time Status**: See when hooks are running
-- **Live Editing**: Modify hooks on-the-fly
+- **Visual Hook Manager**: Easy-to-use WebView interface with MCP configuration
+- **Real-time Status**: See when hooks are running with MCP execution details
+- **Live Editing**: Modify hooks and MCP settings on-the-fly
 - **Pattern Matching**: Target specific file types with glob patterns
 - **Stop Control**: Cancel running hooks anytime
+- **MCP Tool Selection**: Visual interface for enabling project-specific tools
 
 ### 🛡️ Smart Safety Features
 
@@ -53,18 +54,29 @@ Transform your development workflow with intelligent automation! AI Agent Hooks 
 2. **Configure AI Provider**
 
    - Open Command Palette (`Ctrl+Shift+P`)
-   - Run `AI Agent Hooks: AI Provider auswählen`
+   - Run `AI Agent Hooks: Choose AI Provider`
    - Choose your preferred AI provider and enter credentials
 
-3. **Create Your First Hook**
+3. **Configure MCP Tools (Optional)**
 
    - Open Command Palette (`Ctrl+Shift+P`)
-   - Run `AI Agent Hooks: Hook Manager öffnen`
+   - Run `AI Agent Hooks: Configure MCP Tools`
+   - Select tools based on your project (Git tools, file operations, etc.)
+   - This enables advanced multi-step reasoning for hooks
+
+4. **Create Your First Hook**
+
+   - Open Command Palette (`Ctrl+Shift+P`)
+   - Run `AI Agent Hooks: Open Hook Manager`
    - Click "🚀 Create Hook"
    - Fill in natural language description
    - Select trigger event and file pattern
+   - **Enable MCP for advanced reasoning:**
+     - Check "Enable MCP" for multi-step execution
+     - Select project-specific tools (recommended tools pre-selected)
+     - Enable multi-step execution for complex workflows
 
-4. **Watch the Magic Happen**
+5. **Watch the Magic Happen**
    - Your hooks will automatically execute when conditions are met
    - Monitor status in real-time through the Hook Manager
 
@@ -77,6 +89,8 @@ Name: Kotlin KDoc Generator
 Description: "Whenever I change a Kotlin file, add KDoc comments to all functions"
 Trigger: File saved
 Pattern: **/*.kt
+MCP: ✅ Enabled with mcp_filesystem_read, mcp_search_find
+Multi-Step: ✅ Analyzes existing code patterns before adding docs
 ```
 
 ### 🧪 Test Generation
@@ -86,6 +100,8 @@ Name: JavaScript Test Creator
 Description: "When I create a new JS file, generate corresponding Jest test file"
 Trigger: File created
 Pattern: **/*.js
+MCP: ✅ Enabled with mcp_filesystem_list, mcp_search_grep
+Multi-Step: ✅ Finds existing test patterns and follows project conventions
 ```
 
 ### 🎨 Code Formatting
@@ -95,6 +111,8 @@ Name: Python Style Checker
 Description: "On every Python save, check code quality and add docstrings"
 Trigger: File saved
 Pattern: **/*.py
+MCP: ✅ Enabled with mcp_search_grep, mcp_git_status
+Multi-Step: ✅ Checks git status and analyzes project style before modifications
 ```
 
 ### 📖 README Maintenance
@@ -104,6 +122,8 @@ Name: Project Documentation
 Description: "When I create any file, update the README.md with project structure"
 Trigger: File created
 Pattern: **/*
+MCP: ✅ Enabled with mcp_filesystem_list, mcp_filesystem_read_multiple
+Multi-Step: ✅ Analyzes entire project structure and existing README before updates
 ```
 
 ## 📚 Extension Settings
@@ -127,6 +147,29 @@ Configure AI Agent Hooks through VSCode settings:
 }
 ```
 
+### MCP (Model Context Protocol) Configuration
+
+```json
+{
+  "aiAgentHooks.mcp.enabled": true,
+  "aiAgentHooks.mcp.defaultTools": [
+    "mcp_filesystem_list",
+    "mcp_filesystem_read", 
+    "mcp_search_find",
+    "mcp_git_status"
+  ],
+  "aiAgentHooks.mcp.allowedTools": [
+    "mcp_filesystem_list",
+    "mcp_filesystem_read",
+    "mcp_filesystem_read_multiple",
+    "mcp_search_find", 
+    "mcp_search_grep",
+    "mcp_git_status",
+    "mcp_git_log"
+  ]
+}
+```
+
 ## 🎮 Commands
 
 | Command                              | Description                         |
@@ -134,6 +177,7 @@ Configure AI Agent Hooks through VSCode settings:
 | `AI Agent Hooks: Choose AI Provider` | Select and configure AI provider    |
 | `AI Agent Hooks: Test AI Provider`   | Test current AI provider connection |
 | `AI Agent Hooks: Open Hook Manager`  | Open visual Hook Manager interface  |
+| `AI Agent Hooks: Configure MCP Tools` | Configure MCP tools for this project |
 
 ## 🏗️ Architecture
 
@@ -189,7 +233,9 @@ npm run lint              # Check code style
 
 ## 🐛 Known Issues
 
-The current hook system implements simple prompt-response patterns rather than sophisticated AI agent workflows. This results in several limitations:
+### Standard Hooks (Non-MCP) Limitations
+
+Standard hooks without MCP enabled implement simple prompt-response patterns. This results in several limitations:
 
 Context Awareness
 
@@ -200,7 +246,10 @@ Context Awareness
 Missing Agent Capabilities
 
 - No Multi-Step Planning: Cannot break down complex tasks into logical sub-steps
-- No Tool Integration: Cannot use workspace tools like ls, find, grep for context gathering
+- No File System Exploration: Cannot list directory contents or explore project structure
+- No Multi-File Reading: Cannot read multiple related files to understand context
+- No Command Execution: Cannot run read-only commands (ls, find, grep, git status) to gather information
+- No Configurable Tool Access: Missing whitelist system for allowing specific safe commands
 - No Cross-File Analysis: Cannot read related files (tests, configs, documentation) to inform decisions
 - No Iterative Refinement: Cannot analyze results and adjust approach based on intermediate outcomes
 
@@ -211,11 +260,12 @@ Current: Simple transformation\
 
 Missing: Complex agent workflow\
  "Refactor this component following project patterns" →
-  1. Analyze project structure 
-  2. Find similar components 
-  3. Extract common patterns 
-  4. Apply consistent architecture 
-  5. Update related tests and docs
+  1. List project files to understand structure (ls, find)
+  2. Read similar components for pattern analysis
+  3. Execute git status to check for uncommitted changes
+  4. Extract common patterns from multiple files
+  5. Apply consistent architecture with context awareness
+  6. Update related tests and documentation files
 
 Impact on Use Cases
 
@@ -224,9 +274,82 @@ Impact on Use Cases
 - Documentation Sync: Cannot cross-reference multiple files for comprehensive docs
 - Code Migration: Cannot analyze dependencies and impact across multiple files
 
+## 🔧 Potential Solution: MCP Integration
+
+The limitations above could be addressed through **Model Context Protocol (MCP)** integration, which would enable sophisticated AI agent workflows:
+
+### Proposed MCP Architecture
+
+```
+Hook Trigger → MCP Client → AI Model with Tools → Multi-Step Execution → File Modifications
+```
+
+### MCP-Enabled Capabilities
+
+**File System Tools**
+- `mcp_filesystem`: List directories, explore project structure
+- `mcp_search`: Advanced file searching with grep, ripgrep
+- `mcp_git`: Git operations (status, log, diff) for context
+
+**Multi-File Operations**
+- Read multiple related files simultaneously
+- Cross-reference imports, exports, and dependencies
+- Analyze test patterns across the codebase
+
+**Configurable Tool Access**
+- Whitelist system for allowed MCP tools
+- Security boundaries for safe command execution
+- User-controlled permission levels per hook
+
+**Agent Workflow Example**
+```
+"Refactor component following project patterns" →
+1. mcp_filesystem.list() - Explore project structure
+2. mcp_search.find() - Locate similar components
+3. mcp_filesystem.read_multiple() - Analyze patterns
+4. mcp_git.status() - Check for conflicts
+5. Multi-step reasoning and planning
+6. Coordinated file modifications
+```
+
+### Implementation Benefits
+
+- **Context-Aware**: Full project understanding before modifications
+- **Safe Execution**: MCP security model prevents dangerous operations
+- **Extensible**: Plugin architecture for custom tools
+- **Configurable**: User controls which tools each hook can access
+
+**✅ IMPLEMENTED:** The above MCP integration is now available! Enable MCP in the Hook Manager UI to unlock advanced reasoning capabilities.
+
+### Current Status: MCP Available
+
+The Hook Manager now includes:
+- ✅ **Visual MCP Configuration** in the UI
+- ✅ **Project-Specific Tool Detection** (Git tools for Git repos, etc.)
+- ✅ **Multi-Step Execution** with context awareness
+- ✅ **Tool Whitelisting** per hook
+- ✅ **Real-Time Status** showing MCP vs Standard execution
+
+Simply check "Enable MCP" when creating hooks to access sophisticated AI agent workflows!
+
 ## 📈 Roadmap
 
-- 🔮 **v1.1.0**: TBD
+- 🔮 **v0.1.0**: MCP Integration ✅ IMPLEMENTED
+  - ✅ MCP Client with filesystem, search, and git tools
+  - ✅ Multi-step execution with AI planning
+  - ✅ Configurable tool whitelisting per hook
+  - ✅ Advanced reasoning capabilities with context awareness
+  - ✅ Visual MCP configuration in Hook Manager WebView
+  - ✅ Project-specific tool recommendations
+  - ✅ Real-time MCP status indicators
+- 🚀 **v0.2.0**: Enhanced Analytics & Debugging
+  - 🎨 Real-time execution step visualization
+  - 📊 Hook performance analytics
+  - 🔍 MCP execution debugging tools
+- 🌟 **v0.3.0**: Advanced Features
+  - 🔌 Custom MCP tool plugins
+  - 🤝 Team hook sharing and templates
+  - 🔄 Hook execution pipelines
 
 ## 🤝 Contributing
 
