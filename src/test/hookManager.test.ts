@@ -132,7 +132,9 @@ suite('HookManager Test Suite', () => {
             name: 'Test Hook',
             naturalLanguage: 'Test description',
             trigger: 'onDidSaveTextDocument',
-            filePattern: '**/*.js'
+            filePattern: '**/*.js',
+            executionMode: 'single' as const,
+            priority: 5
         };
 
         await hookManager.createHookFromWebview(hookData);
@@ -145,6 +147,8 @@ suite('HookManager Test Suite', () => {
         assert.strictEqual(hook.naturalLanguage, 'Test description');
         assert.strictEqual(hook.trigger, 'onDidSaveTextDocument');
         assert.strictEqual(hook.filePattern, '**/*.js');
+        assert.strictEqual(hook.executionMode, 'single');
+        assert.strictEqual(hook.priority, 5);
         assert.strictEqual(hook.isActive, true);
         assert.strictEqual(hook.isRunning, false);
         assert.ok(hook.id);
@@ -156,7 +160,9 @@ suite('HookManager Test Suite', () => {
             name: 'Toggle Test Hook',
             naturalLanguage: 'Test toggle',
             trigger: 'onDidSaveTextDocument',
-            filePattern: '**/*.ts'
+            filePattern: '**/*.ts',
+            executionMode: 'multiple' as const,
+            priority: 3
         };
 
         await hookManager.createHookFromWebview(hookData);
@@ -180,7 +186,9 @@ suite('HookManager Test Suite', () => {
             name: 'Delete Test Hook',
             naturalLanguage: 'Test delete',
             trigger: 'onDidSaveTextDocument',
-            filePattern: '**/*.py'
+            filePattern: '**/*.py',
+            executionMode: 'restart' as const,
+            priority: 7
         };
 
         await hookManager.createHookFromWebview(hookData);
@@ -199,7 +207,9 @@ suite('HookManager Test Suite', () => {
             name: 'Status Test Hook',
             naturalLanguage: 'Test status',
             trigger: 'onDidSaveTextDocument',
-            filePattern: '**/*.md'
+            filePattern: '**/*.md',
+            executionMode: 'single' as const,
+            priority: 1
         };
 
         await hookManager.createHookFromWebview(hookData);
@@ -222,7 +232,9 @@ suite('HookManager Test Suite', () => {
             name: 'Update Test Hook',
             naturalLanguage: 'Original description',
             trigger: 'onDidSaveTextDocument',
-            filePattern: '**/*.js'
+            filePattern: '**/*.js',
+            executionMode: 'single' as const,
+            priority: 2
         };
 
         await hookManager.createHookFromWebview(hookData);
@@ -233,7 +245,9 @@ suite('HookManager Test Suite', () => {
             name: 'Updated Hook Name',
             naturalLanguage: 'Updated description',
             trigger: 'onDidChangeTextDocument',
-            filePattern: '**/*.ts'
+            filePattern: '**/*.ts',
+            executionMode: 'multiple' as const,
+            priority: 8
         };
 
         await hookManager.updateHookFromWebview(hookId, updateData);
@@ -243,6 +257,8 @@ suite('HookManager Test Suite', () => {
         assert.strictEqual(updatedHook.naturalLanguage, 'Updated description');
         assert.strictEqual(updatedHook.trigger, 'onDidChangeTextDocument');
         assert.strictEqual(updatedHook.filePattern, '**/*.ts');
+        assert.strictEqual(updatedHook.executionMode, 'multiple');
+        assert.strictEqual(updatedHook.priority, 8);
     });
 
     test('should persist hooks to storage', async () => {
@@ -250,7 +266,9 @@ suite('HookManager Test Suite', () => {
             name: 'Persistence Test Hook',
             naturalLanguage: 'Test persistence',
             trigger: 'onDidSaveTextDocument',
-            filePattern: '**/*.json'
+            filePattern: '**/*.json',
+            executionMode: 'single' as const,
+            priority: 0
         };
 
         await hookManager.createHookFromWebview(hookData);
@@ -293,14 +311,18 @@ suite('HookManager Test Suite', () => {
             name: 'Hook 1',
             naturalLanguage: 'First hook',
             trigger: 'onDidSaveTextDocument',
-            filePattern: '**/*.js'
+            filePattern: '**/*.js',
+            executionMode: 'single' as const,
+            priority: 0
         };
 
         const hookData2 = {
             name: 'Hook 2',
             naturalLanguage: 'Second hook',
             trigger: 'onDidSaveTextDocument',
-            filePattern: '**/*.ts'
+            filePattern: '**/*.ts',
+            executionMode: 'multiple' as const,
+            priority: 0
         };
 
         await hookManager.createHookFromWebview(hookData1);
@@ -309,5 +331,185 @@ suite('HookManager Test Suite', () => {
         const hooks = hookManager.getHooks();
         assert.strictEqual(hooks.length, 2);
         assert.notStrictEqual(hooks[0].id, hooks[1].id);
+    });
+
+    suite('New Features Tests', () => {
+        test('should create hooks with different execution modes', async () => {
+            const singleHookData = {
+                name: 'Single Hook',
+                naturalLanguage: 'Single execution',
+                trigger: 'onDidSaveTextDocument',
+                filePattern: '**/*.js',
+                executionMode: 'single' as const,
+                priority: 1
+            };
+
+            const multipleHookData = {
+                name: 'Multiple Hook',
+                naturalLanguage: 'Multiple execution',
+                trigger: 'onDidSaveTextDocument',
+                filePattern: '**/*.ts',
+                executionMode: 'multiple' as const,
+                priority: 2
+            };
+
+            const restartHookData = {
+                name: 'Restart Hook',
+                naturalLanguage: 'Restart execution',
+                trigger: 'onDidSaveTextDocument',
+                filePattern: '**/*.py',
+                executionMode: 'restart' as const,
+                priority: 3
+            };
+
+            await hookManager.createHookFromWebview(singleHookData);
+            await hookManager.createHookFromWebview(multipleHookData);
+            await hookManager.createHookFromWebview(restartHookData);
+
+            const hooks = hookManager.getHooks();
+            assert.strictEqual(hooks.length, 3);
+
+            const singleHook = hooks.find(h => h.name === 'Single Hook');
+            const multipleHook = hooks.find(h => h.name === 'Multiple Hook');
+            const restartHook = hooks.find(h => h.name === 'Restart Hook');
+
+            assert.strictEqual(singleHook?.executionMode, 'single');
+            assert.strictEqual(multipleHook?.executionMode, 'multiple');
+            assert.strictEqual(restartHook?.executionMode, 'restart');
+
+            assert.strictEqual(singleHook?.priority, 1);
+            assert.strictEqual(multipleHook?.priority, 2);
+            assert.strictEqual(restartHook?.priority, 3);
+        });
+
+        test('should update execution mode and priority', async () => {
+            const hookData = {
+                name: 'Update Mode Test',
+                naturalLanguage: 'Test execution mode update',
+                trigger: 'onDidSaveTextDocument',
+                filePattern: '**/*.js',
+                executionMode: 'single' as const,
+                priority: 1
+            };
+
+            await hookManager.createHookFromWebview(hookData);
+            const hooks = hookManager.getHooks();
+            const hookId = hooks[0].id;
+
+            const updateData = {
+                name: 'Update Mode Test',
+                naturalLanguage: 'Test execution mode update',
+                trigger: 'onDidSaveTextDocument',
+                filePattern: '**/*.js',
+                executionMode: 'restart' as const,
+                priority: 10
+            };
+
+            await hookManager.updateHookFromWebview(hookId, updateData);
+
+            const updatedHook = hooks[0];
+            assert.strictEqual(updatedHook.executionMode, 'restart');
+            assert.strictEqual(updatedHook.priority, 10);
+        });
+
+        test('should handle default values for execution mode and priority', async () => {
+            const hookData = {
+                name: 'Default Values Test',
+                naturalLanguage: 'Test default values',
+                trigger: 'onDidSaveTextDocument',
+                filePattern: '**/*.js'
+                // No executionMode or priority specified
+            };
+
+            await hookManager.createHookFromWebview(hookData);
+            const hooks = hookManager.getHooks();
+            const hook = hooks[0];
+
+            // Should default to 'single' execution mode and priority 0
+            assert.strictEqual(hook.executionMode, 'single');
+            assert.strictEqual(hook.priority, 0);
+        });
+
+        test('should persist new fields to storage', async () => {
+            const hookData = {
+                name: 'Persistence New Fields Test',
+                naturalLanguage: 'Test new fields persistence',
+                trigger: 'onDidSaveTextDocument',
+                filePattern: '**/*.js',
+                executionMode: 'restart' as const,
+                priority: 42
+            };
+
+            await hookManager.createHookFromWebview(hookData);
+            
+            // Create new instance to test loading
+            hookManager.dispose();
+            (HookManager as any).instance = undefined;
+            
+            const newHookManager = HookManager.getInstance(mockContext);
+            await newHookManager.initialize();
+            
+            const hooks = newHookManager.getHooks();
+            assert.strictEqual(hooks.length, 1);
+            
+            const hook = hooks[0];
+            assert.strictEqual(hook.executionMode, 'restart');
+            assert.strictEqual(hook.priority, 42);
+            
+            newHookManager.dispose();
+        });
+
+        test('should handle partial updates without affecting new fields', async () => {
+            const hookData = {
+                name: 'Partial Update Test',
+                naturalLanguage: 'Test partial updates',
+                trigger: 'onDidSaveTextDocument',
+                filePattern: '**/*.js',
+                executionMode: 'multiple' as const,
+                priority: 5
+            };
+
+            await hookManager.createHookFromWebview(hookData);
+            const hooks = hookManager.getHooks();
+            const hookId = hooks[0].id;
+
+            // Update only name, leaving execution mode and priority unchanged
+            const updateData = {
+                name: 'Updated Name Only',
+                naturalLanguage: 'Test partial updates',
+                trigger: 'onDidSaveTextDocument',
+                filePattern: '**/*.js'
+                // No executionMode or priority specified
+            };
+
+            await hookManager.updateHookFromWebview(hookId, updateData);
+
+            const updatedHook = hooks[0];
+            assert.strictEqual(updatedHook.name, 'Updated Name Only');
+            // These should remain unchanged
+            assert.strictEqual(updatedHook.executionMode, 'multiple');
+            assert.strictEqual(updatedHook.priority, 5);
+        });
+
+        test('should validate execution mode values', async () => {
+            const validModes = ['single', 'multiple', 'restart'];
+            
+            for (const mode of validModes) {
+                const hookData = {
+                    name: `${mode} mode test`,
+                    naturalLanguage: `Test ${mode} mode`,
+                    trigger: 'onDidSaveTextDocument',
+                    filePattern: '**/*.js',
+                    executionMode: mode as any,
+                    priority: 1
+                };
+
+                await hookManager.createHookFromWebview(hookData);
+                const hooks = hookManager.getHooks();
+                const hook = hooks[hooks.length - 1]; // Get the last created hook
+                
+                assert.strictEqual(hook.executionMode, mode);
+            }
+        });
     });
 });

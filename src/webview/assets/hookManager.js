@@ -79,6 +79,8 @@ class HookManagerUI {
             naturalLanguage: document.getElementById('naturalLanguage')?.value || '',
             trigger: document.getElementById('trigger')?.value || '',
             filePattern: document.getElementById('filePattern')?.value || '**/*',
+            executionMode: document.getElementById('executionMode')?.value || 'single',
+            priority: parseInt(document.getElementById('priority')?.value) || 0,
             mcpEnabled: document.getElementById('mcpEnabled')?.checked || false,
             multiStepEnabled: document.getElementById('multiStepEnabled')?.checked || false,
             allowedMcpTools: selectedTools
@@ -109,8 +111,19 @@ class HookManagerUI {
         if (form) {
             form.reset();
         }
+        
+        // Reset to default values for new fields
+        document.getElementById('executionMode').value = 'single';
+        document.getElementById('priority').value = '0';
+        
         this.editingHookId = null;
         this.updateFormButtonText();
+        
+        // Hide MCP options
+        const mcpOptions = document.getElementById('mcpOptions');
+        if (mcpOptions) {
+            mcpOptions.style.display = 'none';
+        }
     }
 
     updateFormButtonText() {
@@ -118,7 +131,11 @@ class HookManagerUI {
         const cancelButton = document.getElementById('cancelEditBtn');
         
         if (submitButton) {
-            submitButton.textContent = this.editingHookId ? '💾 Update Hook' : '🚀 Create Hook';
+            if (this.editingHookId) {
+                submitButton.textContent = '💾 Update Hook';
+            } else {
+                submitButton.textContent = '🚀 Create Hook';
+            }
         }
         
         if (cancelButton) {
@@ -224,6 +241,11 @@ class HookManagerUI {
                 <div class="hook-trigger">
                     <strong>Trigger:</strong> ${this.escapeHtml(hook.trigger)}
                     ${lastExecuted}
+                </div>
+                <div class="hook-execution-info">
+                    <strong>Execution:</strong> ${this.getExecutionModeDisplay(hook.executionMode)} 
+                    ${hook.priority > 0 ? `(Priority: ${hook.priority})` : ''}
+                    ${hook.filePattern && hook.filePattern !== '**/*' ? `<br><strong>Pattern:</strong> ${this.escapeHtml(hook.filePattern)}` : ''}
                 </div>
                 ${this.createMcpStatusHTML(hook)}
             </div>
@@ -358,12 +380,25 @@ class HookManagerUI {
         container.innerHTML = toolsHTML;
     }
 
+    getExecutionModeDisplay(mode) {
+        const modes = {
+            'single': '🔒 Single execution',
+            'multiple': '🔄 Multiple parallel',
+            'restart': '🔁 Restart on new trigger'
+        };
+        return modes[mode] || mode;
+    }
+
     populateFormForEdit(hook) {
         // Existing form population...
         document.getElementById('hookName').value = hook.name || '';
         document.getElementById('naturalLanguage').value = hook.naturalLanguage || hook.description || '';
         document.getElementById('trigger').value = hook.trigger || '';
         document.getElementById('filePattern').value = hook.filePattern || '';
+        
+        // New execution control fields
+        document.getElementById('executionMode').value = hook.executionMode || 'single';
+        document.getElementById('priority').value = hook.priority || 0;
         
         // MCP-specific form population
         const mcpEnabled = document.getElementById('mcpEnabled');

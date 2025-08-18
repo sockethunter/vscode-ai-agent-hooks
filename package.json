@@ -2,7 +2,7 @@
   "name": "ai-agent-hooks",
   "displayName": "HookFlow - AI Agent Hooks",
   "description": "Automated event-driven AI agent hooks for VSCode",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "sockethunter",
   "icon": "images/mascot.png",
   "repository": {
@@ -141,18 +141,22 @@
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test",
+    "test:coverage": "c8 --reporter=text --reporter=html --reporter=lcov npm test",
+    "test:coverage-ci": "c8 --reporter=lcov --reporter=text-summary npm test",
     "package": "npm run compile && vsce package"
   },
   "devDependencies": {
-    "@types/vscode": "^1.103.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
+    "@types/vscode": "^1.103.0",
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
-    "eslint": "^9.32.0",
-    "typescript": "^5.9.2",
     "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
+    "c8": "^10.1.3",
+    "eslint": "^9.32.0",
+    "nyc": "^17.1.0",
+    "typescript": "^5.9.2",
     "vsce": "^2.12.0"
   }
 }

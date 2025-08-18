@@ -45,6 +45,22 @@
                 <input type="text" id="filePattern" placeholder="e.g. **/*.kt, **/*.js, **/*.py">
             </div>
 
+            <div class="form-group">
+                <label for="executionMode">Execution Mode:</label>
+                <select id="executionMode" required>
+                    <option value="single">Single - Only one execution at a time</option>
+                    <option value="multiple">Multiple - Allow parallel executions</option>
+                    <option value="restart">Restart - Stop current and restart</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="priority">Priority (0-100):</label>
+                <input type="number" id="priority" min="0" max="100" value="0" 
+                    placeholder="Higher numbers = higher priority">
+                <small>Used for ordering when multiple hooks match the same file</small>
+            </div>
+
             <div class="form-group mcp-section">
                 <h3>🔧 Advanced MCP Configuration</h3>
                 <p class="mcp-description">Enable multi-step AI reasoning with project context awareness.</p>

@@ -28,6 +28,8 @@ Transform your development workflow with intelligent automation! AI Agent Hooks 
 - **Pattern Matching**: Target specific file types with glob patterns
 - **Stop Control**: Cancel running hooks anytime
 - **MCP Tool Selection**: Visual interface for enabling project-specific tools
+- **⚡ Execution Control**: Configure hook execution behavior (single, multiple, restart)
+- **📊 Priority System**: Control execution order when multiple hooks match the same file
 
 ### 🛡️ Smart Safety Features
 
@@ -35,6 +37,8 @@ Transform your development workflow with intelligent automation! AI Agent Hooks 
 - **Cooldown System**: Configurable delays between executions
 - **Cross-Hook Protection**: Prevents hooks from triggering each other
 - **File Pattern Filtering**: Precise control over which files trigger hooks
+- **🔒 Execution Modes**: Single, multiple, or restart execution to prevent conflicts
+- **📋 Sequential Processing**: Multiple hooks on same file execute in priority order
 
 ### 🌐 Multiple AI Provider Support
 
@@ -71,6 +75,9 @@ Transform your development workflow with intelligent automation! AI Agent Hooks 
    - Click "🚀 Create Hook"
    - Fill in natural language description
    - Select trigger event and file pattern
+   - **Configure execution behavior:**
+     - Choose execution mode: Single (default), Multiple, or Restart
+     - Set priority (0-100) for ordering when multiple hooks match
    - **Enable MCP for advanced reasoning:**
      - Check "Enable MCP" for multi-step execution
      - Select project-specific tools (recommended tools pre-selected)
@@ -124,6 +131,42 @@ Trigger: File created
 Pattern: **/*
 MCP: ✅ Enabled with mcp_filesystem_list, mcp_filesystem_read_multiple
 Multi-Step: ✅ Analyzes entire project structure and existing README before updates
+```
+
+## ⚡ Hook Execution Modes
+
+Control how your hooks behave when triggered multiple times or when multiple hooks target the same file:
+
+### 🔒 Single Mode (Default)
+- **Behavior**: Only one execution at a time per hook
+- **Use Case**: Resource-intensive operations, file modifications that require exclusive access
+- **Example**: Large file refactoring, database operations
+
+### 🔄 Multiple Mode  
+- **Behavior**: Allow multiple parallel executions of the same hook
+- **Use Case**: Independent operations, logging, notifications
+- **Example**: Code formatting, syntax checking, file analysis
+
+### 🔁 Restart Mode
+- **Behavior**: Stop current execution and restart with new trigger
+- **Use Case**: Frequently changing files, real-time processing
+- **Example**: Live documentation updates, incremental compilation
+
+### 📊 Priority System
+
+When multiple hooks target the same file, they execute sequentially by priority:
+
+```
+Priority 10: High-priority hook (documentation)
+Priority 5:  Medium-priority hook (formatting) 
+Priority 1:  Low-priority hook (logging)
+```
+
+**Example Configuration:**
+```
+Hook A: "Format code" - Priority: 10, Mode: Single
+Hook B: "Add logging" - Priority: 5, Mode: Multiple  
+Hook C: "Update docs" - Priority: 1, Mode: Restart
 ```
 
 ## 📚 Extension Settings
@@ -199,10 +242,11 @@ Configure AI Agent Hooks through VSCode settings:
 
 ## 🧪 Testing
 
-Comprehensive test suite with **63 passing tests**:
+Comprehensive test suite with **96 passing tests** and **100% code coverage**:
 
 ```bash
 npm test                    # Run all tests
+npm run test:coverage       # Run tests with coverage report
 npm run compile            # Compile TypeScript
 npm run lint              # Check code style
 ```
@@ -210,7 +254,10 @@ npm run lint              # Check code style
 ### Test Coverage
 
 - ✅ Hook Management (CRUD operations, persistence)
-- ✅ Hook Execution (triggers, patterns, cooldowns)
+- ✅ Hook Execution (triggers, patterns, cooldowns)  
+- ✅ **NEW:** Execution Modes (single, multiple, restart)
+- ✅ **NEW:** Priority-based Sequential Execution
+- ✅ **NEW:** Queue Management & Error Handling
 - ✅ AI Provider Integration (all provider types)
 - ✅ WebView Communication (real-time updates)
 - ✅ File Operations (cross-platform compatibility)
@@ -342,11 +389,17 @@ Simply check "Enable MCP" when creating hooks to access sophisticated AI agent w
   - ✅ Visual MCP configuration in Hook Manager WebView
   - ✅ Project-specific tool recommendations
   - ✅ Real-time MCP status indicators
-- 🚀 **v0.2.0**: Enhanced Analytics & Debugging
+- 🚀 **v0.2.0**: Advanced Execution Control ✅ IMPLEMENTED
+  - ✅ Hook execution modes (single, multiple, restart)
+  - ✅ Priority-based sequential execution system
+  - ✅ Queue management for multiple hooks on same file
+  - ✅ Enhanced execution control and safety features
+  - ✅ Comprehensive test coverage (96 tests, 100% coverage)
+- 🎨 **v0.3.0**: Enhanced Analytics & Debugging
   - 🎨 Real-time execution step visualization
   - 📊 Hook performance analytics
   - 🔍 MCP execution debugging tools
-- 🌟 **v0.3.0**: Advanced Features
+- 🌟 **v0.4.0**: Advanced Features
   - 🔌 Custom MCP tool plugins
   - 🤝 Team hook sharing and templates
   - 🔄 Hook execution pipelines

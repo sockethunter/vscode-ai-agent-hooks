@@ -29,7 +29,9 @@ suite('MultiStepExecutor Test Suite', () => {
             mcpEnabled: true,
             allowedMcpTools: ['mcp_filesystem_read', 'mcp_search_find'],
             multiStepEnabled: true,
-            createdAt: new Date()
+            createdAt: new Date(),
+            executionMode: 'single',
+            priority: 0
         };
 
         mockContext = {

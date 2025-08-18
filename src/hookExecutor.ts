@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { Hook } from "./hookManager";
+import { Hook, HookExecutionMode } from "./hookManager";
 import { ProviderManager } from "./providers/providerManager";
 import { TemplateEngine } from "./templates/hookTemplates";
 import { MultiStepExecutor } from "./mcp/multiStepExecutor";
@@ -14,6 +14,7 @@ export class HookExecutor {
   private processingFiles: Set<string> = new Set(); // Track files currently being processed
   private hookGeneratedFiles: Set<string> = new Set(); // Track files modified by hooks to prevent cross-triggering
   private runningHooks: Map<string, AbortController> = new Map(); // Track running hooks for cancellation
+  private executionQueue: Map<string, { hook: Hook; context: any }[]> = new Map(); // Queue for sequential execution
 
   private constructor() {
     this.providerManager = ProviderManager.getInstance();
@@ -146,8 +147,7 @@ export class HookExecutor {
     eventType: string
   ): Promise<void> {
     const filePath = document.uri.fsPath;
-    const hookFileKey = `${hook.id}:${filePath}`;
-
+    
     console.log(
       `🎯 handleFileEvent called for hook: ${hook.name}, file: ${filePath}, event: ${eventType}`
     );
@@ -158,27 +158,6 @@ export class HookExecutor {
         `🚫 File ${filePath} was recently modified by a hook, skipping to prevent cross-triggering`
       );
       this.hookGeneratedFiles.delete(filePath); // Remove from set after checking
-      return;
-    }
-
-    // Prevent recursion: check if file is already being processed
-    if (this.processingFiles.has(hookFileKey)) {
-      console.log(
-        `🔄 File ${filePath} is already being processed by hook ${hook.name}, skipping`
-      );
-      return;
-    }
-
-    // Cooldown check
-    const lastExecTime = this.lastExecution.get(hookFileKey) || 0;
-    const now = Date.now();
-    const timeSinceLastExec = now - lastExecTime;
-
-    if (timeSinceLastExec < this.COOLDOWN_MS) {
-      const remainingCooldown = this.COOLDOWN_MS - timeSinceLastExec;
-      console.log(
-        `⏳ Hook ${hook.name} is on cooldown for file ${filePath}. ${remainingCooldown}ms remaining`
-      );
       return;
     }
 
@@ -194,24 +173,15 @@ export class HookExecutor {
       return;
     }
 
-    console.log(`🚀 Executing hook: ${hook.name} for file: ${filePath}`);
+    const context = {
+      type: eventType,
+      file: filePath,
+      content: document.getText(),
+      language: document.languageId,
+    };
 
-    // Mark file as processing
-    this.processingFiles.add(hookFileKey);
-
-    try {
-      // Update last execution time
-      this.lastExecution.set(hookFileKey, now);
-
-      await this.executeHook(hook, {
-        type: eventType,
-        file: filePath,
-        content: document.getText(),
-        language: document.languageId,
-      });
-    } finally {
-      this.processingFiles.delete(hookFileKey);
-    }
+    // Add to sequential execution queue for this file
+    await this.enqueueHookExecution(filePath, hook, context);
   }
 
   private async handleFileSystemEvent(
@@ -223,10 +193,13 @@ export class HookExecutor {
       return;
     }
 
-    await this.executeHook(hook, {
+    const context = {
       type: eventType,
       file: uri.fsPath,
-    });
+    };
+
+    // Add to sequential execution queue for this file
+    await this.enqueueHookExecution(uri.fsPath, hook, context);
   }
 
   private matchesFilePattern(filePath: string, hook: Hook): boolean {
@@ -274,10 +247,10 @@ export class HookExecutor {
 
     // Convert glob to regex
     let regexPattern = normalizedPattern
+      .replace(/\./g, "\\.") // Escape dots first!
       .replace(/\*\*/g, ".*") // ** matches any directory depth
       .replace(/\*/g, "[^/]*") // * matches any file/directory name (but not /)
-      .replace(/\?/g, "[^/]") // ? matches single character (but not /)
-      .replace(/\./g, "\\."); // Escape dots
+      .replace(/\?/g, "[^/]"); // ? matches single character (but not /)
 
     // Ensure the pattern matches the end of the path
     if (!regexPattern.startsWith(".*")) {
@@ -292,6 +265,145 @@ export class HookExecutor {
 
     console.log(`🔍 Regex: ${regexPattern}, Result: ${matches}`);
     return matches;
+  }
+
+  private async enqueueHookExecution(filePath: string, hook: Hook, context: any): Promise<void> {
+    const queueKey = filePath;
+    
+    // Get or create queue for this file
+    if (!this.executionQueue.has(queueKey)) {
+      this.executionQueue.set(queueKey, []);
+    }
+    
+    const queue = this.executionQueue.get(queueKey)!;
+    
+    // Add hook to queue
+    queue.push({ hook, context });
+    console.log(`📋 Added hook ${hook.name} to queue for file ${filePath}. Queue length: ${queue.length}`);
+    
+    // Sort queue by priority (higher priority first)
+    queue.sort((a, b) => b.hook.priority - a.hook.priority);
+    
+    // Process queue if not already processing
+    if (queue.length === 1) {
+      await this.processExecutionQueue(queueKey);
+    }
+  }
+
+  private async processExecutionQueue(queueKey: string): Promise<void> {
+    const queue = this.executionQueue.get(queueKey);
+    if (!queue || queue.length === 0) {
+      return;
+    }
+    
+    console.log(`🔄 Processing execution queue for file: ${queueKey}`);
+    
+    while (queue.length > 0) {
+      const { hook, context } = queue.shift()!;
+      
+      try {
+        console.log(`▶️ Processing hook ${hook.name} (priority: ${hook.priority}) from queue`);
+        await this.scheduleHookExecution(queueKey, hook, context);
+        
+        // Wait a bit between executions to prevent overwhelming
+        if (queue.length > 0) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      } catch (error) {
+        console.error(`❌ Error processing hook ${hook.name} from queue:`, error);
+        // Continue with next hook in queue
+      }
+    }
+    
+    // Clean up empty queue
+    if (queue.length === 0) {
+      this.executionQueue.delete(queueKey);
+      console.log(`🧹 Cleaned up empty queue for file: ${queueKey}`);
+    }
+  }
+
+  private async scheduleHookExecution(filePath: string, hook: Hook, context: any): Promise<void> {
+    console.log(`📋 Scheduling hook execution: ${hook.name} for file: ${filePath}`);
+    
+    const hookFileKey = `${hook.id}:${filePath}`;
+
+    // Check execution mode
+    switch (hook.executionMode) {
+      case 'multiple':
+        // Allow multiple executions, no restrictions
+        console.log(`🔄 Multiple execution mode - starting hook immediately`);
+        await this.executeHookWithChecks(hook, context);
+        break;
+
+      case 'single':
+        // Only one execution at a time
+        if (this.runningHooks.has(hook.id)) {
+          console.log(`🚫 Hook ${hook.name} is already running, ignoring new execution (single mode)`);
+          return;
+        }
+        
+        // Check cooldown
+        if (!this.canExecuteAfterCooldown(hookFileKey)) {
+          return;
+        }
+        
+        console.log(`▶️ Single execution mode - starting hook`);
+        await this.executeHookWithChecks(hook, context);
+        break;
+
+      case 'restart':
+        // Stop existing execution and start new one
+        if (this.runningHooks.has(hook.id)) {
+          console.log(`🔄 Hook ${hook.name} is running - stopping and restarting (restart mode)`);
+          this.stopRunningHook(hook.id);
+          // Wait a bit for the previous execution to stop
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        console.log(`🔁 Restart execution mode - starting hook`);
+        await this.executeHookWithChecks(hook, context);
+        break;
+    }
+  }
+
+  private canExecuteAfterCooldown(hookFileKey: string): boolean {
+    const lastExecTime = this.lastExecution.get(hookFileKey) || 0;
+    const now = Date.now();
+    const timeSinceLastExec = now - lastExecTime;
+
+    if (timeSinceLastExec < this.COOLDOWN_MS) {
+      const remainingCooldown = this.COOLDOWN_MS - timeSinceLastExec;
+      console.log(
+        `⏳ Hook is on cooldown. ${remainingCooldown}ms remaining`
+      );
+      return false;
+    }
+    
+    return true;
+  }
+
+  private async executeHookWithChecks(hook: Hook, context: any): Promise<void> {
+    const hookFileKey = `${hook.id}:${context.file}`;
+
+    // Prevent recursion: check if file is already being processed by this hook
+    if (this.processingFiles.has(hookFileKey)) {
+      console.log(
+        `🔄 File ${context.file} is already being processed by hook ${hook.name}, skipping`
+      );
+      return;
+    }
+
+    // Mark file as processing
+    this.processingFiles.add(hookFileKey);
+
+    try {
+      // Update last execution time
+      this.lastExecution.set(hookFileKey, Date.now());
+
+      await this.executeHook(hook, context);
+    } finally {
+      this.processingFiles.delete(hookFileKey);
+    }
   }
 
   public async executeHook(hook: Hook, context: any): Promise<void> {
@@ -605,6 +717,7 @@ export class HookExecutor {
     this.lastExecution.clear();
     this.processingFiles.clear();
     this.hookGeneratedFiles.clear();
+    this.executionQueue.clear();
     console.log(`🧹 HookExecutor disposed and cleaned up`);
   }
 }

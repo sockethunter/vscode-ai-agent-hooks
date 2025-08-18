@@ -2,6 +2,8 @@ import * as vscode from "vscode";
 import { HookExecutor } from "./hookExecutor";
 import { FileUtils } from "./utils/fileUtils";
 
+export type HookExecutionMode = 'multiple' | 'single' | 'restart';
+
 export interface Hook {
   id: string;
   name: string;
@@ -14,6 +16,9 @@ export interface Hook {
   isRunning: boolean;
   lastExecuted?: Date;
   createdAt: Date;
+  // Execution control
+  executionMode: HookExecutionMode;
+  priority: number; // For sequential execution order
   // MCP Configuration
   mcpEnabled?: boolean;
   allowedMcpTools?: string[];
@@ -79,6 +84,9 @@ export class HookManager {
       isActive: true,
       isRunning: false,
       createdAt: new Date(),
+      // Execution control
+      executionMode: data.executionMode || 'single', // Default to single execution
+      priority: data.priority || 0, // Default priority
       // MCP Configuration
       mcpEnabled: data.mcpEnabled || mcpEnabled,
       allowedMcpTools: data.allowedMcpTools || defaultTools,
@@ -155,6 +163,13 @@ export class HookManager {
     hook.trigger = data.trigger;
     hook.filePattern = data.filePattern || "**/*";
     hook.template = await this.generateTemplate(data);
+    // Update execution control settings if provided
+    if (data.executionMode !== undefined) {
+      hook.executionMode = data.executionMode;
+    }
+    if (data.priority !== undefined) {
+      hook.priority = data.priority;
+    }
     // Update MCP settings if provided
     if (data.mcpEnabled !== undefined) {
       hook.mcpEnabled = data.mcpEnabled;
