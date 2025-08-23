@@ -52,7 +52,8 @@
             "openai",
             "anthropic",
             "ollama",
-            "azure-openai"
+            "azure-openai",
+            "gemini"
           ],
           "description": "Currently chosen AI provider"
         },
@@ -63,7 +64,7 @@
         "aiAgentHooks.openai.model": {
           "type": "string",
           "default": "gpt-4",
-          "description": "OpenAI Modell"
+          "description": "OpenAI Model"
         },
         "aiAgentHooks.anthropic.apiKey": {
           "type": "string",
@@ -72,7 +73,7 @@
         "aiAgentHooks.anthropic.model": {
           "type": "string",
           "default": "claude-sonnet-4-20250514",
-          "description": "Anthropic Modell"
+          "description": "Anthropic Model"
         },
         "aiAgentHooks.ollama.baseUrl": {
           "type": "string",
@@ -82,7 +83,7 @@
         "aiAgentHooks.ollama.model": {
           "type": "string",
           "default": "llama2",
-          "description": "Ollama Modell"
+          "description": "Ollama Model"
         },
         "aiAgentHooks.azureOpenai.apiKey": {
           "type": "string",
@@ -95,6 +96,15 @@
         "aiAgentHooks.azureOpenai.model": {
           "type": "string",
           "description": "Azure OpenAI Deployment Name"
+        },
+        "aiAgentHooks.gemini.apiKey": {
+          "type": "string",
+          "description": "Gemini API Key"
+        },
+        "aiAgentHooks.gemini.model": {
+          "type": "string",
+          "default": "gemini-2.5-pro",
+          "description": "Gemini Model"
         },
         "aiAgentHooks.mcp.enabled": {
           "type": "boolean",

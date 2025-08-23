@@ -3,6 +3,7 @@ import { AIProvider, AIProviderType } from "./aiProvider";
 import { OpenAIProvider } from "./openaiProvider";
 import { AnthropicProvider } from "./anthropicProvider";
 import { OllamaProvider } from "./ollamaProvider";
+import { GeminiProvider } from "./geminiProvider";
 
 export class ProviderManager {
   private static instance: ProviderManager;
@@ -21,6 +22,7 @@ export class ProviderManager {
       { label: "Anthropic (Claude)", value: AIProviderType.ANTHROPIC },
       { label: "Ollama (Local)", value: AIProviderType.OLLAMA },
       { label: "Azure OpenAI", value: AIProviderType.AZURE_OPENAI },
+      { label: "Gemini", value: AIProviderType.GEMINI },
     ];
 
     const selected = await vscode.window.showQuickPick(
@@ -52,6 +54,9 @@ export class ProviderManager {
         break;
       case AIProviderType.AZURE_OPENAI:
         await this.configureAzureOpenAI(config);
+        break;
+      case AIProviderType.GEMINI:
+        await this.configureGemini(config);
         break;
     }
   }
@@ -186,6 +191,39 @@ export class ProviderManager {
     vscode.window.showInformationMessage("Azure OpenAI Provider konfiguriert");
   }
 
+  private async configureGemini(
+    config: vscode.WorkspaceConfiguration
+  ): Promise<void> {
+    const apiKey = await vscode.window.showInputBox({
+      prompt: "Gemini API Key eingeben",
+      password: true,
+      value: config.get("gemini.apiKey", ""),
+    });
+
+    if (!apiKey) {return;}
+
+    const model = await vscode.window.showQuickPick(
+      [
+        "gemini-2.5-pro",
+        "gemini-1.5-pro-latest",
+        "gemini-1.5-flash-latest",
+        "gemini-2.0-flash-001"
+      ],
+      { placeHolder: "Modell wählen" }
+    );
+
+    await config.update("provider", AIProviderType.GEMINI, true);
+    await config.update("gemini.apiKey", apiKey, true);
+    await config.update("gemini.model", model || "gemini-2.5-pro", true);
+
+    this.currentProvider = new GeminiProvider({
+      apiKey,
+      model: model || "gemini-2.5-pro",
+    });
+
+    vscode.window.showInformationMessage("Gemini Provider konfiguriert");
+  }
+
   getCurrentProvider(): AIProvider | null {
     return this.currentProvider;
   }
@@ -231,6 +269,16 @@ export class ProviderManager {
             model: config.get<string>("ollama.model", "llama2"),
           };
           this.currentProvider = new OllamaProvider(ollamaConfig);
+          break;
+
+        case AIProviderType.GEMINI:
+          const geminiConfig = {
+            apiKey: config.get<string>("gemini.apiKey", ""),
+            model: config.get<string>("gemini.model", "gemini-2.5-pro"),
+          };
+          if (geminiConfig.apiKey) {
+            this.currentProvider = new GeminiProvider(geminiConfig);
+          }
           break;
       }
     } catch (error) {
