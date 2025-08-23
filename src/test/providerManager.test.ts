@@ -111,6 +111,20 @@ suite('ProviderManager Test Suite', () => {
         assert.strictEqual(currentProvider.getName(), 'Ollama');
     });
 
+    test('should initialize Gemini CLI provider from config', async () => {
+        // Set up Gemini CLI configuration
+        const config = vscode.workspace.getConfiguration('aiAgentHooks');
+        await config.update('provider', 'gemini-cli', vscode.ConfigurationTarget.Global);
+        await config.update('gemini-cli.apiKey', 'test-gemini-key', vscode.ConfigurationTarget.Global);
+        await config.update('gemini-cli.model', 'gemini-pro', vscode.ConfigurationTarget.Global);
+
+        await providerManager.initializeFromConfig();
+        
+        const currentProvider = providerManager.getCurrentProvider();
+        assert.ok(currentProvider);
+        assert.strictEqual(currentProvider.getName(), 'Gemini CLI');
+    });
+
     test('should provide selectProvider method for UI', () => {
         // This method exists for UI interaction
         assert.ok(typeof providerManager.selectProvider === 'function');
