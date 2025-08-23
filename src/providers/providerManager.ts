@@ -3,7 +3,7 @@ import { AIProvider, AIProviderType } from "./aiProvider";
 import { OpenAIProvider } from "./openaiProvider";
 import { AnthropicProvider } from "./anthropicProvider";
 import { OllamaProvider } from "./ollamaProvider";
-import { GeminiProvider } from "./geminiProvider";
+import { GeminiCliProvider } from "./geminiCliProvider";
 
 export class ProviderManager {
   private static instance: ProviderManager;
@@ -22,7 +22,7 @@ export class ProviderManager {
       { label: "Anthropic (Claude)", value: AIProviderType.ANTHROPIC },
       { label: "Ollama (Local)", value: AIProviderType.OLLAMA },
       { label: "Azure OpenAI", value: AIProviderType.AZURE_OPENAI },
-      { label: "Gemini", value: AIProviderType.GEMINI },
+      { label: "Gemini CLI", value: AIProviderType.GEMINI },
     ];
 
     const selected = await vscode.window.showQuickPick(
@@ -195,7 +195,7 @@ export class ProviderManager {
     config: vscode.WorkspaceConfiguration
   ): Promise<void> {
     const apiKey = await vscode.window.showInputBox({
-      prompt: "Gemini API Key eingeben",
+      prompt: "Gemini CLI API Key eingeben",
       password: true,
       value: config.get("gemini.apiKey", ""),
     });
@@ -216,12 +216,12 @@ export class ProviderManager {
     await config.update("gemini.apiKey", apiKey, true);
     await config.update("gemini.model", model || "gemini-2.5-pro", true);
 
-    this.currentProvider = new GeminiProvider({
+    this.currentProvider = new GeminiCliProvider({
       apiKey,
       model: model || "gemini-2.5-pro",
     });
 
-    vscode.window.showInformationMessage("Gemini Provider konfiguriert");
+    vscode.window.showInformationMessage("Gemini CLI Provider konfiguriert");
   }
 
   getCurrentProvider(): AIProvider | null {
@@ -277,7 +277,7 @@ export class ProviderManager {
             model: config.get<string>("gemini.model", "gemini-2.5-pro"),
           };
           if (geminiConfig.apiKey) {
-            this.currentProvider = new GeminiProvider(geminiConfig);
+            this.currentProvider = new GeminiCliProvider(geminiConfig);
           }
           break;
       }

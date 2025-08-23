@@ -99,12 +99,12 @@
         },
         "aiAgentHooks.gemini.apiKey": {
           "type": "string",
-          "description": "Gemini API Key"
+          "description": "Gemini CLI API Key"
         },
         "aiAgentHooks.gemini.model": {
           "type": "string",
           "default": "gemini-2.5-pro",
-          "description": "Gemini Model"
+          "description": "Gemini CLI Model"
         },
         "aiAgentHooks.mcp.enabled": {
           "type": "boolean",

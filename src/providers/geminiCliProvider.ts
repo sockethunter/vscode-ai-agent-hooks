@@ -3,13 +3,13 @@ import { AIProvider, AIProviderConfig, AIResponse } from './aiProvider';
 // Declare require function to avoid TypeScript errors
 declare function require(moduleName: string): any;
 
-export class GeminiProvider extends AIProvider {
+export class GeminiCliProvider extends AIProvider {
     constructor(config: AIProviderConfig) {
         super(config);
     }
 
     getName(): string {
-        return 'Gemini';
+        return 'Gemini CLI';
     }
 
     getDefaultModel(): string {
@@ -44,7 +44,7 @@ export class GeminiProvider extends AIProvider {
                 }
             };
         } catch (error) {
-            throw new Error(`Gemini API error: ${error instanceof Error ? error.message : String(error)}`);
+            throw new Error(`Gemini CLI API error: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
