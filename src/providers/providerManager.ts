@@ -194,13 +194,10 @@ export class ProviderManager {
   private async configureGemini(
     config: vscode.WorkspaceConfiguration
   ): Promise<void> {
-    const apiKey = await vscode.window.showInputBox({
-      prompt: "Gemini CLI API Key eingeben",
-      password: true,
-      value: config.get("gemini.apiKey", ""),
+    const credsPath = await vscode.window.showInputBox({
+      prompt: "Gemini CLI OAuth Credentials Path (optional)",
+      value: config.get("gemini.cliOAuthPath", "~/.gemini/oauth_creds.json"),
     });
-
-    if (!apiKey) {return;}
 
     const model = await vscode.window.showQuickPick(
       [
@@ -213,13 +210,20 @@ export class ProviderManager {
     );
 
     await config.update("provider", AIProviderType.GEMINI, true);
-    await config.update("gemini.apiKey", apiKey, true);
     await config.update("gemini.model", model || "gemini-2.5-pro", true);
+    
+    // Only update creds path if user provided a value
+    if (credsPath !== undefined && credsPath !== "") {
+      await config.update("gemini.cliOAuthPath", credsPath, true);
+    }
+
+    // Use the provided creds path or default
+    const geminiCliOAuthPath = (credsPath !== undefined && credsPath !== "") ? credsPath : "~/.gemini/oauth_creds.json";
 
     this.currentProvider = new GeminiCliProvider({
-      apiKey,
       model: model || "gemini-2.5-pro",
-    });
+      geminiCliOAuthPath
+    } as any);
 
     vscode.window.showInformationMessage("Gemini CLI Provider konfiguriert");
   }
@@ -275,9 +279,11 @@ export class ProviderManager {
           const geminiConfig = {
             apiKey: config.get<string>("gemini.apiKey", ""),
             model: config.get<string>("gemini.model", "gemini-2.5-pro"),
+            geminiCliOAuthPath: config.get<string>("gemini.cliOAuthPath", "~/.gemini/oauth_creds.json"),
           };
-          if (geminiConfig.apiKey) {
-            this.currentProvider = new GeminiCliProvider(geminiConfig);
+          // Initialize provider if either apiKey or cliOAuthPath is present (backwards compatibility)
+          if (geminiConfig.apiKey || geminiConfig.geminiCliOAuthPath) {
+            this.currentProvider = new GeminiCliProvider(geminiConfig as any);
           }
           break;
       }

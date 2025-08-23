@@ -16,11 +16,11 @@ suite('GeminiCliProvider Security Test Suite', () => {
         
         // Set up provider with test configuration
         provider = new GeminiCliProvider({
-            apiKey: 'test-api-key-sensitive',
+            geminiCliOAuthPath: '~/.gemini/oauth_creds.json',
             model: 'gemini-2.5-pro',
             temperature: 0.8,
             maxTokens: 1500
-        });
+        } as any);
 
         // Mock child process
         mockChild = {
@@ -116,18 +116,18 @@ suite('GeminiCliProvider Security Test Suite', () => {
 
             // Verify API key is NOT in arguments
             const capturedArgs: string[] = spawnCallArgs[1] || [];
-            const apiKeyInArgs = capturedArgs.some((arg: string) => 
-                arg.includes('test-api-key-sensitive') || 
+            const geminiCliOAuthPathInArgs = capturedArgs.some((arg: string) =>
+                arg.includes('oauth') ||
                 arg.includes('api-key') ||
                 arg.includes('--api-key')
             );
-            assert.strictEqual(apiKeyInArgs, false, 'API key should NOT be present in command arguments');
+            assert.strictEqual(geminiCliOAuthPathInArgs, false, 'API key should NOT be present in command arguments');
         } finally {
             Module.prototype.require = originalRequire;
         }
     });
 
-    test('should pass API key via environment variable', async () => {
+    test('should NOT pass API key via environment variable', async () => {
         const Module = require('module');
         const originalRequire = Module.prototype.require;
         
@@ -141,13 +141,28 @@ suite('GeminiCliProvider Security Test Suite', () => {
         try {
             await provider.sendMessage('Test prompt');
 
-            // Verify API key is passed via environment
+            // Verify API key is NOT passed via environment
             const capturedEnv = spawnCallArgs[2]?.env || {};
-            assert.ok(capturedEnv.GEMINI_API_KEY, 'API key should be passed via GEMINI_API_KEY environment variable');
-            assert.strictEqual(capturedEnv.GEMINI_API_KEY, 'test-api-key-sensitive', 'Environment variable should contain the correct API key');
+            assert.strictEqual(capturedEnv.GEMINI_API_KEY, undefined, 'API key should NOT be passed via GEMINI_API_KEY environment variable');
         } finally {
             Module.prototype.require = originalRequire;
         }
+    });
+
+    test('should set default OAuth path when not provided', () => {
+        // Create provider without geminiCliOAuthPath
+        const providerWithoutOAuthPath = new GeminiCliProvider({
+            model: 'gemini-2.5-pro'
+        } as any);
+
+        // Validate config which should set the default path
+        const isValid = providerWithoutOAuthPath.validateConfig();
+        
+        // Check that validation passes
+        assert.strictEqual(isValid, true, 'Should validate with default OAuth path');
+        
+        // Check that the default path was set
+        assert.strictEqual((providerWithoutOAuthPath as any).config.geminiCliOAuthPath, '~/.gemini/oauth_creds.json', 'Should set default OAuth path');
     });
 
     test('should use stdin for prompt input instead of command line argument', async () => {
@@ -298,19 +313,22 @@ suite('GeminiCliProvider Security Test Suite', () => {
         }
     });
 
-    test('should validate configuration correctly', () => {
-        const validProvider = new GeminiCliProvider({
-            apiKey: 'valid-key',
+    test('should validate configuration correctly and set default OAuth path', () => {
+        const validProviderWithOAuthPath = new GeminiCliProvider({
+            geminiCliOAuthPath: '~/.gemini/oauth_creds.json',
             model: 'gemini-2.5-pro'
-        });
+        } as any);
 
-        const invalidProvider = new GeminiCliProvider({
-            apiKey: '',
+        const providerWithoutOAuthPath = new GeminiCliProvider({
             model: 'gemini-2.5-pro'
-        });
+        } as any);
 
-        assert.strictEqual(validProvider.validateConfig(), true, 'Should validate with API key');
-        assert.strictEqual(invalidProvider.validateConfig(), false, 'Should not validate without API key');
+        // Both should validate successfully
+        assert.strictEqual(validProviderWithOAuthPath.validateConfig(), true, 'Should validate with OAuth path');
+        assert.strictEqual(providerWithoutOAuthPath.validateConfig(), true, 'Should validate and set default OAuth path');
+        
+        // Check that default path was set
+        assert.strictEqual((providerWithoutOAuthPath as any).config.geminiCliOAuthPath, '~/.gemini/oauth_creds.json', 'Should set default OAuth path');
     });
 
     test('should return correct provider name and default model', () => {
@@ -318,9 +336,9 @@ suite('GeminiCliProvider Security Test Suite', () => {
         assert.strictEqual(provider.getDefaultModel(), 'gemini-2.5-pro');
         
         const providerWithCustomModel = new GeminiCliProvider({
-            apiKey: 'test-key',
+            geminiCliOAuthPath: '~/.gemini/oauth_creds.json',
             model: 'custom-model'
-        });
+        } as any);
         assert.strictEqual(providerWithCustomModel.getDefaultModel(), 'custom-model');
     });
 });

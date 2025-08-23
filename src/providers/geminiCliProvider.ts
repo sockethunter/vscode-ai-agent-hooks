@@ -1,5 +1,7 @@
 import { AIProvider, AIProviderConfig, AIResponse } from './aiProvider';
 import { spawn } from 'child_process';
+import * as os from 'os';
+import * as path from 'path';
 
 export class GeminiCliProvider extends AIProvider {
     constructor(config: AIProviderConfig) {
@@ -23,14 +25,21 @@ export class GeminiCliProvider extends AIProvider {
                 '--prompt', prompt  // Use --prompt instead of stdin for this CLI
             ];
             
-            // Pass API key via environment variable instead of command line argument
-            const env = {
-                ...process.env,
-                GEMINI_API_KEY: this.config.apiKey
-            };
+            // Build environment strictly from process.env
+            const env = { ...process.env };
+            // Do NOT set GEMINI_API_KEY under any circumstance
+            // Only support gemini CLI oauth creds path
+            
+            // Add the creds path to the environment
+            const credsPath = (this.config as any).geminiCliOAuthPath;
+            // Expand ~ to home directory if needed
+            const expandedPath = credsPath.startsWith("~")
+                ? path.join(os.homedir(), credsPath.slice(1))
+                : credsPath;
+            env.GEMINI_OAUTH_CREDS = expandedPath;
             
             // Spawn the process with arguments array (no shell interpolation)
-            const child = spawn('gemini', args, { 
+            const child = spawn('gemini', args, {
                 env,
                 stdio: ['pipe', 'pipe', 'pipe']
             });
@@ -94,6 +103,11 @@ export class GeminiCliProvider extends AIProvider {
     }
 
     validateConfig(): boolean {
-        return !!this.config.apiKey;
+        // Only support gemini CLI oauth creds path; default to ~/.gemini/oauth_creds.json when not provided.
+        if (!(this.config as any).geminiCliOAuthPath) {
+            (this.config as any).geminiCliOAuthPath = "~/.gemini/oauth_creds.json";
+        }
+        
+        return true;
     }
 }
