@@ -33,5 +33,5 @@ export enum AIProviderType {
     ANTHROPIC = 'anthropic',
     OLLAMA = 'ollama',
     AZURE_OPENAI = 'azure-openai',
-    GEMINI = 'gemini'
+    GEMINI_CLI = 'gemini-cli',
 }

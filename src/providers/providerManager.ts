@@ -22,7 +22,7 @@ export class ProviderManager {
       { label: "Anthropic (Claude)", value: AIProviderType.ANTHROPIC },
       { label: "Ollama (Local)", value: AIProviderType.OLLAMA },
       { label: "Azure OpenAI", value: AIProviderType.AZURE_OPENAI },
-      { label: "Gemini CLI", value: AIProviderType.GEMINI },
+      { label: "Gemini CLI", value: AIProviderType.GEMINI_CLI },
     ];
 
     const selected = await vscode.window.showQuickPick(
@@ -55,7 +55,7 @@ export class ProviderManager {
       case AIProviderType.AZURE_OPENAI:
         await this.configureAzureOpenAI(config);
         break;
-      case AIProviderType.GEMINI:
+      case AIProviderType.GEMINI_CLI:
         await this.configureGemini(config);
         break;
     }
@@ -209,7 +209,7 @@ export class ProviderManager {
       { placeHolder: "Modell wählen" }
     );
 
-    await config.update("provider", AIProviderType.GEMINI, true);
+    await config.update("provider", AIProviderType.GEMINI_CLI, true);
     await config.update("gemini.model", model || "gemini-2.5-pro", true);
     
     // Only update creds path if user provided a value
@@ -275,7 +275,7 @@ export class ProviderManager {
           this.currentProvider = new OllamaProvider(ollamaConfig);
           break;
 
-        case AIProviderType.GEMINI:
+        case AIProviderType.GEMINI_CLI:
           const geminiConfig = {
             apiKey: config.get<string>("gemini.apiKey", ""),
             model: config.get<string>("gemini.model", "gemini-2.5-pro"),

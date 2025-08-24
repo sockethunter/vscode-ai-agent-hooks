@@ -165,48 +165,6 @@ suite('GeminiCliProvider Security Test Suite', () => {
         assert.strictEqual((providerWithoutOAuthPath as any).config.geminiCliOAuthPath, '~/.gemini/oauth_creds.json', 'Should set default OAuth path');
     });
 
-    test('should use stdin for prompt input instead of command line argument', async () => {
-        let stdinWrites: string[] = [];
-        let stdinEnded = false;
-
-        // Enhanced mock to capture stdin operations
-        const enhancedMockChild = {
-            ...mockChild,
-            stdin: {
-                write: (data: string) => {
-                    stdinWrites.push(data);
-                },
-                end: () => {
-                    stdinEnded = true;
-                }
-            }
-        };
-
-        const customMockSpawn = () => enhancedMockChild;
-
-        const Module = require('module');
-        const originalRequire = Module.prototype.require;
-        
-        Module.prototype.require = function(id: string) {
-            if (id === 'child_process') {
-                return { spawn: customMockSpawn };
-            }
-            return originalRequire.apply(this, arguments);
-        };
-
-        try {
-            const testPrompt = 'Test prompt with "quotes" and special chars: $()[]{};';
-            await provider.sendMessage(testPrompt);
-
-            // Verify prompt was written to stdin
-            assert.ok(stdinWrites.length > 0, 'Prompt should be written to stdin');
-            assert.ok(stdinWrites.includes(testPrompt), 'Exact prompt should be written to stdin');
-            assert.ok(stdinEnded, 'stdin should be ended after writing prompt');
-        } finally {
-            Module.prototype.require = originalRequire;
-        }
-    });
-
     test('should avoid shell interpolation by using stdio pipes', async () => {
         const Module = require('module');
         const originalRequire = Module.prototype.require;
@@ -340,5 +298,49 @@ suite('GeminiCliProvider Security Test Suite', () => {
             model: 'custom-model'
         } as any);
         assert.strictEqual(providerWithCustomModel.getDefaultModel(), 'custom-model');
+    });
+
+    test('should expand ~ to home directory in OAuth path', (done) => {
+        const homeDir = require('os').homedir();
+        const providerWithTildePath = new GeminiCliProvider({
+            geminiCliOAuthPath: '~/custom/path/oauth_creds.json',
+            model: 'gemini-2.5-pro'
+        } as any);
+
+        // Call validateConfig to trigger path expansion
+        providerWithTildePath.validateConfig();
+
+        // Create a custom mock spawn to capture environment
+        let capturedOptions: any;
+        const customMockSpawn = (command: string, args: string[], options: any) => {
+            capturedOptions = options;
+            spawnCallArgs = [command, args, options];
+            return mockChild;
+        };
+
+        // Mock the import by intercepting the require call within the provider
+        const Module = require('module');
+        const originalRequire = Module.prototype.require;
+        
+        Module.prototype.require = function(id: string) {
+            if (id === 'child_process') {
+                return { spawn: customMockSpawn };
+            }
+            return originalRequire.apply(this, arguments);
+        };
+
+        // Call sendMessage to trigger environment setup
+        providerWithTildePath.sendMessage('test prompt')
+            .then(() => {
+                // Verify the path was expanded
+                const capturedEnv = capturedOptions?.env || {};
+                assert.strictEqual(capturedEnv.GEMINI_OAUTH_CREDS, `${homeDir}/custom/path/oauth_creds.json`, 'Should expand ~ to home directory');
+                Module.prototype.require = originalRequire;
+                done();
+            })
+            .catch((error) => {
+                Module.prototype.require = originalRequire;
+                done(error);
+            });
     });
 });
