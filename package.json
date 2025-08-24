@@ -53,7 +53,7 @@
             "anthropic",
             "ollama",
             "azure-openai",
-            "gemini"
+            "gemini-cli"
           ],
           "description": "Currently chosen AI provider"
         },
@@ -97,11 +97,11 @@
           "type": "string",
           "description": "Azure OpenAI Deployment Name"
         },
-        "aiAgentHooks.gemini.apiKey": {
+        "aiAgentHooks.gemini-cli.apiKey": {
           "type": "string",
           "description": "Gemini CLI API Key"
         },
-        "aiAgentHooks.gemini.model": {
+        "aiAgentHooks.gemini-cli.model": {
           "type": "string",
           "default": "gemini-2.5-pro",
           "description": "Gemini CLI Model"
