@@ -196,7 +196,7 @@ export class ProviderManager {
   ): Promise<void> {
     const credsPath = await vscode.window.showInputBox({
       prompt: "Gemini CLI OAuth Credentials Path (optional)",
-      value: config.get("gemini.cliOAuthPath", "~/.gemini/oauth_creds.json"),
+      value: config.get("gemini-cli.cliOAuthPath", "~/.gemini/oauth_creds.json"),
     });
 
     const model = await vscode.window.showQuickPick(
@@ -209,11 +209,11 @@ export class ProviderManager {
     );
 
     await config.update("provider", AIProviderType.GEMINI_CLI, true);
-    await config.update("gemini.model", model || "gemini-2.5-flash", true);
+    await config.update("gemini-cli.model", model || "gemini-2.5-flash", true);
     
     // Only update creds path if user provided a value
     if (credsPath !== undefined && credsPath !== "") {
-      await config.update("gemini.cliOAuthPath", credsPath, true);
+      await config.update("gemini-cli.cliOAuthPath", credsPath, true);
     }
 
     // Use the provided creds path or default
@@ -276,9 +276,9 @@ export class ProviderManager {
 
         case AIProviderType.GEMINI_CLI:
           const geminiConfig = {
-            apiKey: config.get<string>("gemini.apiKey", ""),
-            model: config.get<string>("gemini.model", "gemini-2.5-flash"),
-            geminiCliOAuthPath: config.get<string>("gemini.cliOAuthPath", "~/.gemini/oauth_creds.json"),
+            apiKey: config.get<string>("gemini-cli.apiKey", ""),
+            model: config.get<string>("gemini-cli.model", "gemini-2.5-flash"),
+            geminiCliOAuthPath: config.get<string>("gemini-cli.cliOAuthPath", "~/.gemini/oauth_creds.json"),
           };
           // Initialize provider if either apiKey or cliOAuthPath is present (backwards compatibility)
           if (geminiConfig.apiKey || geminiConfig.geminiCliOAuthPath) {
