@@ -103,7 +103,7 @@
         },
         "aiAgentHooks.gemini-cli.model": {
           "type": "string",
-          "default": "gemini-2.5-pro",
+          "default": "gemini-2.5-flash",
           "description": "Gemini CLI Model"
         },
         "aiAgentHooks.mcp.enabled": {

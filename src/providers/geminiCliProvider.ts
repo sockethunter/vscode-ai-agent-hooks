@@ -13,7 +13,7 @@ export class GeminiCliProvider extends AIProvider {
   }
 
   getDefaultModel(): string {
-    return this.config.model || "gemini-2.5-pro";
+    return this.config.model || "gemini-2.5-flash";
   }
 
   async sendMessage(prompt: string): Promise<AIResponse> {

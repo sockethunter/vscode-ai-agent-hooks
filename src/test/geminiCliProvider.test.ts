@@ -13,7 +13,7 @@ suite('GeminiCliProvider Security Test Suite', () => {
         // Set up provider with test configuration
         provider = new GeminiCliProvider({
             geminiCliOAuthPath: '~/.gemini/oauth_creds.json',
-            model: 'gemini-2.5-pro',
+            model: 'gemini-2.5-flash',
             temperature: 0.8,
             maxTokens: 1500
         } as any);
@@ -122,7 +122,7 @@ suite('GeminiCliProvider Security Test Suite', () => {
     test('should set default OAuth path when not provided', () => {
         // Create provider without geminiCliOAuthPath
         const providerWithoutOAuthPath = new GeminiCliProvider({
-            model: 'gemini-2.5-pro'
+            model: 'gemini-2.5-flash'
         } as any);
 
         // Validate config which should set the default path
@@ -178,11 +178,11 @@ suite('GeminiCliProvider Security Test Suite', () => {
     test('should validate configuration correctly and set default OAuth path', () => {
         const validProviderWithOAuthPath = new GeminiCliProvider({
             geminiCliOAuthPath: '~/.gemini/oauth_creds.json',
-            model: 'gemini-2.5-pro'
+            model: 'gemini-2.5-flash'
         } as any);
 
         const providerWithoutOAuthPath = new GeminiCliProvider({
-            model: 'gemini-2.5-pro'
+            model: 'gemini-2.5-flash'
         } as any);
 
         // Both should validate successfully
@@ -195,7 +195,7 @@ suite('GeminiCliProvider Security Test Suite', () => {
 
     test('should return correct provider name and default model', () => {
         assert.strictEqual(provider.getName(), 'Gemini CLI');
-        assert.strictEqual(provider.getDefaultModel(), 'gemini-2.5-pro');
+        assert.strictEqual(provider.getDefaultModel(), 'gemini-2.5-flash');
         
         const providerWithCustomModel = new GeminiCliProvider({
             geminiCliOAuthPath: '~/.gemini/oauth_creds.json',
@@ -208,7 +208,7 @@ suite('GeminiCliProvider Security Test Suite', () => {
         const homeDir = require('os').homedir();
         const providerWithTildePath = new GeminiCliProvider({
             geminiCliOAuthPath: '~/custom/path/oauth_creds.json',
-            model: 'gemini-2.5-pro'
+            model: 'gemini-2.5-flash'
         } as any);
 
         // Call validateConfig to trigger path expansion
