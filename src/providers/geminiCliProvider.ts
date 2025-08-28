@@ -9,7 +9,8 @@ import * as dotenv from "dotenv";
 // OAuth2 Configuration
 
 //  OAuth Client ID used to initiate OAuth2Client class.
-const OAUTH_CLIENT_ID = "681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com";
+const OAUTH_CLIENT_ID =
+  "681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com";
 
 // OAuth Secret value used to initiate OAuth2Client class.
 // Note: It's ok to save this in git because this is an installed application
@@ -25,308 +26,348 @@ const CODE_ASSIST_ENDPOINT = "https://cloudcode-pa.googleapis.com";
 const CODE_ASSIST_API_VERSION = "v1internal";
 
 interface OAuthCredentials {
-	access_token: string;
-	refresh_token: string;
-	token_type: string;
-	expiry_date: number;
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expiry_date: number;
 }
 
 export class GeminiCliProvider extends AIProvider {
-	private authClient: OAuth2Client;
-	private projectId: string | null = null;
-	private credentials: OAuthCredentials | null = null;
+  private authClient: OAuth2Client;
+  private projectId: string | null = null;
+  private credentials: OAuthCredentials | null = null;
 
-	constructor(config: AIProviderConfig) {
-		super(config);
-		this.authClient = new OAuth2Client(OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET, OAUTH_REDIRECT_URI);
-	}
+  constructor(config: AIProviderConfig) {
+    super(config);
+    this.authClient = new OAuth2Client(
+      OAUTH_CLIENT_ID,
+      OAUTH_CLIENT_SECRET,
+      OAUTH_REDIRECT_URI,
+    );
+  }
 
-	getName(): string {
-		return "Gemini CLI";
-	}
+  getName(): string {
+    return "Gemini CLI";
+  }
 
-	getDefaultModel(): string {
-		return this.config.model || "gemini-2.5-flash";
-	}
+  getDefaultModel(): string {
+    return this.config.model || "gemini-2.5-flash";
+  }
 
-	private async loadOAuthCredentials(): Promise<void> {
-		try {
-			const credPath = (this.config as any).geminiCliOAuthPath || path.join(os.homedir(), ".gemini", "oauth_creds.json");
-			const expandedPath = credPath.startsWith("~") ? path.join(os.homedir(), credPath.slice(1)) : credPath;
-			const credData = await fs.readFile(expandedPath, "utf-8");
-			this.credentials = JSON.parse(credData);
+  private async loadOAuthCredentials(): Promise<void> {
+    try {
+      const credPath =
+        (this.config as any).geminiCliOAuthPath ||
+        path.join(os.homedir(), ".gemini", "oauth_creds.json");
+      const expandedPath = credPath.startsWith("~")
+        ? path.join(os.homedir(), credPath.slice(1))
+        : credPath;
+      const credData = await fs.readFile(expandedPath, "utf-8");
+      this.credentials = JSON.parse(credData);
 
-			// Set credentials on the OAuth2 client
-			if (this.credentials) {
-				this.authClient.setCredentials({
-					access_token: this.credentials.access_token,
-					refresh_token: this.credentials.refresh_token,
-					expiry_date: this.credentials.expiry_date,
-				});
-			}
-		} catch (error) {
-			throw new Error(`Failed to load OAuth credentials: ${error instanceof Error ? error.message : String(error)}`);
-		}
-	}
+      // Set credentials on the OAuth2 client
+      if (this.credentials) {
+        this.authClient.setCredentials({
+          access_token: this.credentials.access_token,
+          refresh_token: this.credentials.refresh_token,
+          expiry_date: this.credentials.expiry_date,
+        });
+      }
+    } catch (error) {
+      throw new Error(
+        `Failed to load OAuth credentials: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
 
-	private async ensureAuthenticated(): Promise<void> {
-		if (!this.credentials) {
-			await this.loadOAuthCredentials();
-		}
+  private async ensureAuthenticated(): Promise<void> {
+    if (!this.credentials) {
+      await this.loadOAuthCredentials();
+    }
 
-		// Check if token needs refresh
-		if (this.credentials && this.credentials.expiry_date < Date.now()) {
-			try {
-				const { credentials } = await this.authClient.refreshAccessToken();
-				if (credentials.access_token) {
-					this.credentials = {
-						access_token: credentials.access_token!,
-						refresh_token: credentials.refresh_token || this.credentials.refresh_token,
-						token_type: credentials.token_type || "Bearer",
-						expiry_date: credentials.expiry_date || Date.now() + 3600 * 1000,
-					};
-					// Save refreshed credentials back to file
-					const credPath = (this.config as any).geminiCliOAuthPath || path.join(os.homedir(), ".gemini", "oauth_creds.json");
-					const expandedPath = credPath.startsWith("~") ? path.join(os.homedir(), credPath.slice(1)) : credPath;
-					await fs.writeFile(expandedPath, JSON.stringify(this.credentials, null, 2));
-				}
-			} catch (error) {
-				throw new Error(`Failed to refresh access token: ${error instanceof Error ? error.message : String(error)}`);
-			}
-		}
-	}
+    // Check if token needs refresh
+    if (this.credentials && this.credentials.expiry_date < Date.now()) {
+      try {
+        const { credentials } = await this.authClient.refreshAccessToken();
+        if (credentials.access_token) {
+          this.credentials = {
+            access_token: credentials.access_token!,
+            refresh_token:
+              credentials.refresh_token || this.credentials.refresh_token,
+            token_type: credentials.token_type || "Bearer",
+            expiry_date: credentials.expiry_date || Date.now() + 3600 * 1000,
+          };
+          // Save refreshed credentials back to file
+          const credPath =
+            (this.config as any).geminiCliOAuthPath ||
+            path.join(os.homedir(), ".gemini", "oauth_creds.json");
+          const expandedPath = credPath.startsWith("~")
+            ? path.join(os.homedir(), credPath.slice(1))
+            : credPath;
+          await fs.writeFile(
+            expandedPath,
+            JSON.stringify(this.credentials, null, 2),
+          );
+        }
+      } catch (error) {
+        throw new Error(
+          `Failed to refresh access token: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+  }
 
-	/**
-	 * Call a Code Assist API endpoint
-	 */
-	private async callEndpoint(method: string, body: any, retryAuth: boolean = true): Promise<any> {
-		try {
-			const response = await this.authClient.request({
-				url: `${CODE_ASSIST_ENDPOINT}/${CODE_ASSIST_API_VERSION}:${method}`,
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				responseType: "json",
-				data: JSON.stringify(body),
-			});
-			return response.data;
-		} catch (error: any) {
-			// If we get a 401 and haven't retried yet, try refreshing auth
-			if (error.response?.status === 401 && retryAuth) {
-				await this.ensureAuthenticated(); // This will refresh the token
-				return this.callEndpoint(method, body, false); // Retry without further auth retries
-			}
+  /**
+   * Call a Code Assist API endpoint
+   */
+  private async callEndpoint(
+    method: string,
+    body: any,
+    retryAuth: boolean = true,
+  ): Promise<any> {
+    try {
+      const response = await this.authClient.request({
+        url: `${CODE_ASSIST_ENDPOINT}/${CODE_ASSIST_API_VERSION}:${method}`,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        responseType: "json",
+        data: JSON.stringify(body),
+      });
+      return response.data;
+    } catch (error: any) {
+      // If we get a 401 and haven't retried yet, try refreshing auth
+      if (error.response?.status === 401 && retryAuth) {
+        await this.ensureAuthenticated(); // This will refresh the token
+        return this.callEndpoint(method, body, false); // Retry without further auth retries
+      }
 
-			throw error;
-		}
-	}
+      throw error;
+    }
+  }
 
-	/**
-	 * Discover or retrieve the project ID
-	 */
-	private async discoverProjectId(): Promise<string> {
-		// If we already have a project ID in config, use it
-		if ((this.config as any).geminiCliProjectId) {
-			this.projectId = (this.config as any).geminiCliProjectId;
-			return this.projectId as string;
-		}
+  /**
+   * Discover or retrieve the project ID
+   */
+  private async discoverProjectId(): Promise<string> {
+    // If we already have a project ID in config, use it
+    if ((this.config as any).geminiCliProjectId) {
+      this.projectId = (this.config as any).geminiCliProjectId;
+      return this.projectId as string;
+    }
 
-		// If we've already discovered it, return it
-		if (this.projectId) {
-			return this.projectId as string;
-		}
+    // If we've already discovered it, return it
+    if (this.projectId) {
+      return this.projectId as string;
+    }
 
-		// Lookup for the project id from the env variable
-		const envPath = path.join(os.homedir(), ".gemini", ".env");
-		
-		try {
-			const envData = await fs.readFile(envPath, "utf-8");
-			const envConfig = dotenv.parse(envData);
-			
-			if (envConfig.GOOGLE_CLOUD_PROJECT) {
-				this.projectId = envConfig.GOOGLE_CLOUD_PROJECT;
-				return this.projectId as string;
-			}
-		} catch (error) {
-			// .env file not found or invalid, continue with default
-		}
+    // Lookup for the project id from the env variable
+    const envPath = path.join(os.homedir(), ".gemini", ".env");
 
-		const initialProjectId = process.env.GOOGLE_CLOUD_PROJECT ?? "default";
+    try {
+      const envData = await fs.readFile(envPath, "utf-8");
+      const envConfig = dotenv.parse(envData);
 
-		// Prepare client metadata
-		const clientMetadata = {
-			ideType: "IDE_UNSPECIFIED",
-			platform: "PLATFORM_UNSPECIFIED",
-			pluginType: "GEMINI",
-			duetProject: initialProjectId,
-		};
+      if (envConfig.GOOGLE_CLOUD_PROJECT) {
+        this.projectId = envConfig.GOOGLE_CLOUD_PROJECT;
+        return this.projectId as string;
+      }
+    } catch (error) {
+      // .env file not found or invalid, continue with default
+    }
 
-		try {
-			// Call loadCodeAssist to discover the actual project ID
-			const loadRequest = {
-				cloudaicompanionProject: initialProjectId,
-				metadata: clientMetadata,
-			};
+    const initialProjectId = process.env.GOOGLE_CLOUD_PROJECT ?? "default";
 
-			const loadResponse = await this.callEndpoint("loadCodeAssist", loadRequest);
+    // Prepare client metadata
+    const clientMetadata = {
+      ideType: "IDE_UNSPECIFIED",
+      platform: "PLATFORM_UNSPECIFIED",
+      pluginType: "GEMINI",
+      duetProject: initialProjectId,
+    };
 
-			// Check if we already have a project ID from the response
-			if (loadResponse.cloudaicompanionProject) {
-				this.projectId = loadResponse.cloudaicompanionProject;
-				return this.projectId as string;
-			}
+    try {
+      // Call loadCodeAssist to discover the actual project ID
+      const loadRequest = {
+        cloudaicompanionProject: initialProjectId,
+        metadata: clientMetadata,
+      };
 
-			// If no existing project, we need to onboard
-			const defaultTier = loadResponse.allowedTiers?.find((tier: any) => tier.isDefault);
-			const tierId = defaultTier?.id || "free-tier";
+      const loadResponse = await this.callEndpoint(
+        "loadCodeAssist",
+        loadRequest,
+      );
 
-			const onboardRequest = {
-				tierId: tierId,
-				cloudaicompanionProject: initialProjectId,
-				metadata: clientMetadata,
-			};
+      // Check if we already have a project ID from the response
+      if (loadResponse.cloudaicompanionProject) {
+        this.projectId = loadResponse.cloudaicompanionProject;
+        return this.projectId as string;
+      }
 
-			let lroResponse = await this.callEndpoint("onboardUser", onboardRequest);
+      // If no existing project, we need to onboard
+      const defaultTier = loadResponse.allowedTiers?.find(
+        (tier: any) => tier.isDefault,
+      );
+      const tierId = defaultTier?.id || "free-tier";
 
-			// Poll until operation is complete with timeout protection
-			const MAX_RETRIES = 30; // Maximum number of retries (60 seconds total)
-			let retryCount = 0;
+      const onboardRequest = {
+        tierId: tierId,
+        cloudaicompanionProject: initialProjectId,
+        metadata: clientMetadata,
+      };
 
-			while (!lroResponse.done && retryCount < MAX_RETRIES) {
-				await new Promise((resolve) => setTimeout(resolve, 2000));
-				lroResponse = await this.callEndpoint("onboardUser", onboardRequest);
-				retryCount++;
-			}
+      let lroResponse = await this.callEndpoint("onboardUser", onboardRequest);
 
-			if (!lroResponse.done) {
-				throw new Error("Onboarding timeout");
-			}
+      // Poll until operation is complete with timeout protection
+      const MAX_RETRIES = 30; // Maximum number of retries (60 seconds total)
+      let retryCount = 0;
 
-			const discoveredProjectId = lroResponse.response?.cloudaicompanionProject?.id || initialProjectId;
-			this.projectId = discoveredProjectId;
-			return this.projectId as string;
-		} catch (error: any) {
-			throw new Error(`Failed to discover project ID: ${error instanceof Error ? error.message : String(error)}`);
-		}
-	}
+      while (!lroResponse.done && retryCount < MAX_RETRIES) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        lroResponse = await this.callEndpoint("onboardUser", onboardRequest);
+        retryCount++;
+      }
 
-	/**
-	 * Parse Server-Sent Events from a stream
-	 */
-	private async *parseSSEStream(stream: NodeJS.ReadableStream): AsyncGenerator<any> {
-		let buffer = "";
+      if (!lroResponse.done) {
+        throw new Error("Onboarding timeout");
+      }
 
-		for await (const chunk of stream) {
-			buffer += chunk.toString();
-			const lines = buffer.split("\n");
-			buffer = lines.pop() || "";
+      const discoveredProjectId =
+        lroResponse.response?.cloudaicompanionProject?.id || initialProjectId;
+      this.projectId = discoveredProjectId;
+      return this.projectId as string;
+    } catch (error: any) {
+      throw new Error(
+        `Failed to discover project ID: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
 
-			for (const line of lines) {
-				if (line.startsWith("data: ")) {
-					const data = line.slice(6).trim();
-					if (data === "[DONE]") continue;
+  /**
+   * Parse Server-Sent Events from a stream
+   */
+  private async *parseSSEStream(
+    stream: NodeJS.ReadableStream,
+  ): AsyncGenerator<any> {
+    let buffer = "";
 
-					try {
-						const parsed = JSON.parse(data);
-						yield parsed;
-					} catch (e) {
-						console.error("Error parsing SSE data:", e);
-					}
-				}
-			}
-		}
-	}
+    for await (const chunk of stream) {
+      buffer += chunk.toString();
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
-	async sendMessage(prompt: string): Promise<AIResponse> {
-		try {
-			await this.ensureAuthenticated();
-			const projectId = await this.discoverProjectId();
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") {
+            continue;
+          }
 
-			const requestBody = {
-				model: this.getDefaultModel(),
-				project: projectId,
-				request: {
-					contents: [{ role: "user", parts: [{ text: prompt }] }],
-					generationConfig: {
-						temperature: this.config.temperature ?? 0.7,
-						maxOutputTokens: this.config.maxTokens ?? 8192,
-					},
-				},
-			};
+          try {
+            const parsed = JSON.parse(data);
+            yield parsed;
+          } catch (e) {
+            console.error("Error parsing SSE data:", e);
+          }
+        }
+      }
+    }
+  }
 
-			// Call Code Assist streaming endpoint using OAuth2Client
-			const response = await this.authClient.request({
-				url: `${CODE_ASSIST_ENDPOINT}/${CODE_ASSIST_API_VERSION}:streamGenerateContent`,
-				method: "POST",
-				params: { alt: "sse" },
-				headers: {
-					"Content-Type": "application/json",
-				},
-				responseType: "stream",
-				data: JSON.stringify(requestBody),
-			});
+  async sendMessage(prompt: string): Promise<AIResponse> {
+    try {
+      await this.ensureAuthenticated();
+      const projectId = await this.discoverProjectId();
 
-			// Process the SSE stream and collect the response
-			let fullResponse = "";
-			let lastUsageMetadata: any = undefined;
+      const requestBody = {
+        model: this.getDefaultModel(),
+        project: projectId,
+        request: {
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: this.config.temperature ?? 0.7,
+            maxOutputTokens: this.config.maxTokens ?? 8192,
+          },
+        },
+      };
 
-			for await (const jsonData of this.parseSSEStream(response.data as NodeJS.ReadableStream)) {
-				// Extract content from the response
-				const responseData = jsonData.response || jsonData;
-				const candidate = responseData.candidates?.[0];
+      // Call Code Assist streaming endpoint using OAuth2Client
+      const response = await this.authClient.request({
+        url: `${CODE_ASSIST_ENDPOINT}/${CODE_ASSIST_API_VERSION}:streamGenerateContent`,
+        method: "POST",
+        params: { alt: "sse" },
+        headers: {
+          "Content-Type": "application/json",
+        },
+        responseType: "stream",
+        data: JSON.stringify(requestBody),
+      });
 
-				if (candidate?.content?.parts) {
-					for (const part of candidate.content.parts) {
-						if (part.text && !part.thought) {
-							fullResponse += part.text;
-						}
-					}
-				}
+      // Process the SSE stream and collect the response
+      let fullResponse = "";
+      let lastUsageMetadata: any = undefined;
 
-				// Store usage metadata for final reporting
-				if (responseData.usageMetadata) {
-					lastUsageMetadata = responseData.usageMetadata;
-				}
+      for await (const jsonData of this.parseSSEStream(
+        response.data as NodeJS.ReadableStream,
+      )) {
+        // Extract content from the response
+        const responseData = jsonData.response || jsonData;
+        const candidate = responseData.candidates?.[0];
 
-				// Check if this is the final chunk
-				if (candidate?.finishReason) {
-					break;
-				}
-			}
+        if (candidate?.content?.parts) {
+          for (const part of candidate.content.parts) {
+            if (part.text && !part.thought) {
+              fullResponse += part.text;
+            }
+          }
+        }
 
-			// Extract usage information
-			let promptTokens = 0;
-			let completionTokens = 0;
-			let totalTokens = 0;
+        // Store usage metadata for final reporting
+        if (responseData.usageMetadata) {
+          lastUsageMetadata = responseData.usageMetadata;
+        }
 
-			if (lastUsageMetadata) {
-				promptTokens = lastUsageMetadata.promptTokenCount ?? 0;
-				completionTokens = lastUsageMetadata.candidatesTokenCount ?? 0;
-				totalTokens = promptTokens + completionTokens;
-			}
+        // Check if this is the final chunk
+        if (candidate?.finishReason) {
+          break;
+        }
+      }
 
-			return {
-				content: fullResponse,
-				usage: {
-					promptTokens,
-					completionTokens,
-					totalTokens,
-				},
-			};
-		} catch (error) {
-			throw new Error(`Gemini CLI API error: ${error instanceof Error ? error.message : String(error)}`);
-		}
-	}
+      // Extract usage information
+      let promptTokens = 0;
+      let completionTokens = 0;
+      let totalTokens = 0;
 
-	validateConfig(): boolean {
-		// Support gemini CLI oauth creds path; default to ~/.gemini/oauth_creds.json when not provided.
-		if (!(this.config as any).geminiCliOAuthPath) {
-			(this.config as any).geminiCliOAuthPath = "~/.gemini/oauth_creds.json";
-		}
-		
-		// geminiCliProjectId is optional and can be discovered dynamically
-		
-		return true;
-	}
+      if (lastUsageMetadata) {
+        promptTokens = lastUsageMetadata.promptTokenCount ?? 0;
+        completionTokens = lastUsageMetadata.candidatesTokenCount ?? 0;
+        totalTokens = promptTokens + completionTokens;
+      }
+
+      return {
+        content: fullResponse,
+        usage: {
+          promptTokens,
+          completionTokens,
+          totalTokens,
+        },
+      };
+    } catch (error) {
+      throw new Error(
+        `Gemini CLI API error: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  validateConfig(): boolean {
+    // Support gemini CLI oauth creds path; default to ~/.gemini/oauth_creds.json when not provided.
+    if (!(this.config as any).geminiCliOAuthPath) {
+      (this.config as any).geminiCliOAuthPath = "~/.gemini/oauth_creds.json";
+    }
+
+    // geminiCliProjectId is optional and can be discovered dynamically
+
+    return true;
+  }
 }
