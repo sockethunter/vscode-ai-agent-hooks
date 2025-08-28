@@ -42,7 +42,7 @@ Transform your development workflow with intelligent automation! AI Agent Hooks 
 - **Anthropic** (Claude 3 Sonnet, Haiku)
 - **Ollama** (Local LLMs)
 - **Azure OpenAI**
-- **Gemini CLI** (Google Gemini models via CLI)
+- **Gemini CLI** (Google Gemini models via CLI) (Requires Google Gemini CLI to be installed and configured)
 
 ## 🚀 Quick Start
 

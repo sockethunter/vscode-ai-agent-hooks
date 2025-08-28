@@ -64,7 +64,7 @@
         "aiAgentHooks.openai.model": {
           "type": "string",
           "default": "gpt-4",
-          "description": "OpenAI Model"
+          "description": "OpenAI Modell"
         },
         "aiAgentHooks.anthropic.apiKey": {
           "type": "string",
@@ -73,7 +73,7 @@
         "aiAgentHooks.anthropic.model": {
           "type": "string",
           "default": "claude-sonnet-4-20250514",
-          "description": "Anthropic Model"
+          "description": "Anthropic Modell"
         },
         "aiAgentHooks.ollama.baseUrl": {
           "type": "string",
@@ -83,7 +83,7 @@
         "aiAgentHooks.ollama.model": {
           "type": "string",
           "default": "llama2",
-          "description": "Ollama Model"
+          "description": "Ollama Modell"
         },
         "aiAgentHooks.azureOpenai.apiKey": {
           "type": "string",
@@ -104,7 +104,7 @@
         "aiAgentHooks.gemini-cli.model": {
           "type": "string",
           "default": "gemini-2.5-flash",
-          "description": "Gemini CLI Model"
+          "description": "Gemini CLI Modell"
         },
         "aiAgentHooks.gemini-cli.cliOAuthPath": {
           "type": "string",
