@@ -1,3 +1,29 @@
+// This file contains code inspired by or derived from Kilo Code.
+// Original Kilo Code is licensed under the Apache License, Version 2.0.
+// A copy of the Apache License, Version 2.0 can be found at:
+// https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the Apache License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the Apache License for the specific language governing permissions and
+// limitations under the License.
+//
+// Original source: https://github.com/Kilo-Org/kilocode
+//
+// All modifications and the overall work are licensed under the
+// GNU General Public License, Version 3.
+// A copy of the GNU General Public License, Version 3 can be found in the
+// 'LICENSE' file at the root of this repository.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import { AIProvider, AIProviderConfig, AIResponse } from "./aiProvider";
 import { OAuth2Client } from "google-auth-library";
 import axios from "axios";
