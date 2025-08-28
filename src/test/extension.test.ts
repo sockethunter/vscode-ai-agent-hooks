@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import './hookManager.test';
 import './hookExecutor.test';
 import './providerManager.test';
+import './geminiCliProvider.test';
 import './hookManagerProvider.test';
 import './fileUtils.test';
 

@@ -52,7 +52,8 @@
             "openai",
             "anthropic",
             "ollama",
-            "azure-openai"
+            "azure-openai",
+            "gemini-cli"
           ],
           "description": "Currently chosen AI provider"
         },
@@ -95,6 +96,20 @@
         "aiAgentHooks.azureOpenai.model": {
           "type": "string",
           "description": "Azure OpenAI Deployment Name"
+        },
+        "aiAgentHooks.gemini-cli.apiKey": {
+          "type": "string",
+          "description": "Gemini CLI API Key"
+        },
+        "aiAgentHooks.gemini-cli.model": {
+          "type": "string",
+          "default": "gemini-2.5-flash",
+          "description": "Gemini CLI Modell"
+        },
+        "aiAgentHooks.gemini-cli.cliOAuthPath": {
+          "type": "string",
+          "default": "~/.gemini/oauth_creds.json",
+          "description": "Gemini CLI OAuth Credentials Path"
         },
         "aiAgentHooks.mcp.enabled": {
           "type": "boolean",
@@ -144,15 +159,20 @@
     "package": "npm run compile && vsce package"
   },
   "devDependencies": {
-    "@types/vscode": "^1.103.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
+    "@types/vscode": "^1.103.0",
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
-    "eslint": "^9.32.0",
-    "typescript": "^5.9.2",
     "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.32.0",
+    "typescript": "^5.9.2",
     "vsce": "^2.12.0"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "dotenv": "^16.6.1",
+    "google-auth-library": "^9.15.1"
   }
 }

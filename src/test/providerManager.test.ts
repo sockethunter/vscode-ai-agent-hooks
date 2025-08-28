@@ -17,6 +17,8 @@ suite('ProviderManager Test Suite', () => {
         await config.update('provider', undefined, vscode.ConfigurationTarget.Global);
         await config.update('openai.apiKey', undefined, vscode.ConfigurationTarget.Global);
         await config.update('openai.model', undefined, vscode.ConfigurationTarget.Global);
+        // Reset singleton
+        (ProviderManager as any).instance = undefined;
     });
 
     test('should create ProviderManager singleton', () => {
@@ -109,6 +111,34 @@ suite('ProviderManager Test Suite', () => {
         const currentProvider = providerManager.getCurrentProvider();
         assert.ok(currentProvider);
         assert.strictEqual(currentProvider.getName(), 'Ollama');
+    });
+
+    test('should initialize Gemini CLI provider from config', async () => {
+        // Set up Gemini CLI configuration
+        const config = vscode.workspace.getConfiguration('aiAgentHooks');
+        await config.update('provider', 'gemini-cli', vscode.ConfigurationTarget.Global);
+        await config.update('gemini-cli.cliOAuthPath', '~/.gemini/oauth_creds.json', vscode.ConfigurationTarget.Global);
+        await config.update('gemini-cli.model', 'gemini-2.5-flash', vscode.ConfigurationTarget.Global);
+
+        await providerManager.initializeFromConfig();
+        
+        const currentProvider = providerManager.getCurrentProvider();
+        assert.ok(currentProvider);
+        assert.strictEqual(currentProvider.getName(), 'Gemini CLI');
+    });
+
+    test('should handle Gemini CLI configuration without OAuth path', async () => {
+        // Set up Gemini CLI configuration without OAuth path
+        const config = vscode.workspace.getConfiguration('aiAgentHooks');
+        await config.update('provider', 'gemini-cli', vscode.ConfigurationTarget.Global);
+        await config.update('gemini-cli.model', 'gemini-2.5-flash', vscode.ConfigurationTarget.Global);
+        // No OAuth path set - should use default
+
+        await providerManager.initializeFromConfig();
+        
+        const currentProvider = providerManager.getCurrentProvider();
+        assert.ok(currentProvider);
+        assert.strictEqual(currentProvider.getName(), 'Gemini CLI');
     });
 
     test('should provide selectProvider method for UI', () => {

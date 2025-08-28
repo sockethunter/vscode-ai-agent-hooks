@@ -3,6 +3,7 @@ import { AIProvider, AIProviderType } from "./aiProvider";
 import { OpenAIProvider } from "./openaiProvider";
 import { AnthropicProvider } from "./anthropicProvider";
 import { OllamaProvider } from "./ollamaProvider";
+import { GeminiCliProvider } from "./geminiCliProvider";
 
 export class ProviderManager {
   private static instance: ProviderManager;
@@ -21,6 +22,7 @@ export class ProviderManager {
       { label: "Anthropic (Claude)", value: AIProviderType.ANTHROPIC },
       { label: "Ollama (Local)", value: AIProviderType.OLLAMA },
       { label: "Azure OpenAI", value: AIProviderType.AZURE_OPENAI },
+      { label: "Gemini CLI", value: AIProviderType.GEMINI_CLI },
     ];
 
     const selected = await vscode.window.showQuickPick(
@@ -52,6 +54,9 @@ export class ProviderManager {
         break;
       case AIProviderType.AZURE_OPENAI:
         await this.configureAzureOpenAI(config);
+        break;
+      case AIProviderType.GEMINI_CLI:
+        await this.configureGemini(config);
         break;
     }
   }
@@ -186,6 +191,42 @@ export class ProviderManager {
     vscode.window.showInformationMessage("Azure OpenAI Provider konfiguriert");
   }
 
+  private async configureGemini(
+    config: vscode.WorkspaceConfiguration
+  ): Promise<void> {
+    const credsPath = await vscode.window.showInputBox({
+      prompt: "Gemini CLI OAuth Credentials Path (optional)",
+      value: config.get("gemini-cli.cliOAuthPath", "~/.gemini/oauth_creds.json"),
+    });
+
+    const model = await vscode.window.showQuickPick(
+      [
+        "gemini-2.5-pro",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash-exp"
+      ],
+      { placeHolder: "Modell wählen" }
+    );
+
+    await config.update("provider", AIProviderType.GEMINI_CLI, true);
+    await config.update("gemini-cli.model", model || "gemini-2.5-flash", true);
+    
+    // Only update creds path if user provided a value
+    if (credsPath !== undefined && credsPath !== "") {
+      await config.update("gemini-cli.cliOAuthPath", credsPath, true);
+    }
+
+    // Use the provided creds path or default
+    const geminiCliOAuthPath = (credsPath !== undefined && credsPath !== "") ? credsPath : "~/.gemini/oauth_creds.json";
+
+    this.currentProvider = new GeminiCliProvider({
+      model: model || "gemini-2.5-flash",
+      geminiCliOAuthPath
+    } as any);
+
+    vscode.window.showInformationMessage("Gemini CLI Provider konfiguriert");
+  }
+
   getCurrentProvider(): AIProvider | null {
     return this.currentProvider;
   }
@@ -231,6 +272,18 @@ export class ProviderManager {
             model: config.get<string>("ollama.model", "llama2"),
           };
           this.currentProvider = new OllamaProvider(ollamaConfig);
+          break;
+
+        case AIProviderType.GEMINI_CLI:
+          const geminiConfig = {
+            apiKey: config.get<string>("gemini-cli.apiKey", ""),
+            model: config.get<string>("gemini-cli.model", "gemini-2.5-flash"),
+            geminiCliOAuthPath: config.get<string>("gemini-cli.cliOAuthPath", "~/.gemini/oauth_creds.json"),
+          };
+          // Initialize provider if either apiKey or cliOAuthPath is present (backwards compatibility)
+          if (geminiConfig.apiKey || geminiConfig.geminiCliOAuthPath) {
+            this.currentProvider = new GeminiCliProvider(geminiConfig as any);
+          }
           break;
       }
     } catch (error) {

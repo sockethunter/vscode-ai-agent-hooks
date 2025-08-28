@@ -42,6 +42,7 @@ Transform your development workflow with intelligent automation! AI Agent Hooks 
 - **Anthropic** (Claude 3 Sonnet, Haiku)
 - **Ollama** (Local LLMs)
 - **Azure OpenAI**
+- **Gemini CLI** (Google Gemini models via CLI) (Requires Google Gemini CLI to be installed and configured)
 
 ## 🚀 Quick Start
 
@@ -143,7 +144,10 @@ Configure AI Agent Hooks through VSCode settings:
   "aiAgentHooks.ollama.model": "llama2",
   "aiAgentHooks.azureOpenai.apiKey": "your-azure-key",
   "aiAgentHooks.azureOpenai.baseUrl": "https://your-resource.openai.azure.com",
-  "aiAgentHooks.azureOpenai.model": "your-deployment-name"
+  "aiAgentHooks.azureOpenai.model": "your-deployment-name",
+  "aiAgentHooks.gemini-cli.apiKey": "your-gemini-cli-key",
+  "aiAgentHooks.gemini-cli.model": "gemini-2.5-flash",
+  "aiAgentHooks.gemini-cli.cliOAuthPath": "~/.gemini/oauth_creds.json"
 }
 ```
 
