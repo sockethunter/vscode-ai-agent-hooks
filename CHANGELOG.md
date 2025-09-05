@@ -4,7 +4,13 @@ All notable changes to the "ai-agent-hooks" extension will be documented in this
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.3.0] - 2025-08-18
+## [0.3.1] - 2025-09-06
+
+### Fixed
+
+- vibe mode button missing in status bar menu
+
+## [0.3.0] - 2025-09-06
 
 ### Added
 
