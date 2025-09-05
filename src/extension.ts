@@ -244,6 +244,11 @@ export async function activate(context: vscode.ExtensionContext) {
           description: "Configure MCP tools for enhanced functionality",
           command: "ai-agent-hooks.configureMcp",
         },
+        {
+          label: "$(comment-discussion) Open Vibe Mode",
+          description: "AI-powered chat interface with project analysis",
+          command: "ai-agent-hooks.openVibe",
+        },
       ];
 
       const selected = await vscode.window.showQuickPick(items, {
