@@ -190,6 +190,38 @@ export class ProviderManager {
     return this.currentProvider;
   }
 
+  async generateResponse(prompt: string): Promise<string> {
+    if (!this.currentProvider) {
+      throw new Error('No AI provider configured. Please select a provider first.');
+    }
+    
+    try {
+      const response = await this.currentProvider.generateResponse(prompt);
+      return response;
+    } catch (error) {
+      throw new Error(`Failed to generate response: ${error}`);
+    }
+  }
+
+  async generateConversationResponse(messages: Array<{role: 'user' | 'assistant' | 'system', content: string}>): Promise<string> {
+    if (!this.currentProvider) {
+      throw new Error('No AI provider configured. Please select a provider first.');
+    }
+    
+    try {
+      // For now, convert messages to simple prompt format
+      // TODO: Implement proper message support in individual providers
+      const prompt = messages
+        .map(msg => `${msg.role === 'system' ? 'System' : msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+        .join('\n\n');
+      
+      const response = await this.currentProvider.generateResponse(prompt);
+      return response;
+    } catch (error) {
+      throw new Error(`Failed to generate conversation response: ${error}`);
+    }
+  }
+
   async initializeFromConfig(): Promise<void> {
     const config = vscode.workspace.getConfiguration("aiAgentHooks");
     const providerType = config.get<AIProviderType>("provider");

@@ -14,7 +14,9 @@ export class HookExecutor {
   private processingFiles: Set<string> = new Set(); // Track files currently being processed
   private hookGeneratedFiles: Set<string> = new Set(); // Track files modified by hooks to prevent cross-triggering
   private runningHooks: Map<string, AbortController> = new Map(); // Track running hooks for cancellation
-  private executionQueue: Map<string, { hook: Hook; context: any }[]> = new Map(); // Queue for sequential execution
+  private executionQueue: Map<string, { hook: Hook; context: any }[]> =
+    new Map(); // Queue for sequential execution
+  private fileLocks: Map<string, Promise<void>> = new Map(); // File-level locks to prevent race conditions
 
   private constructor() {
     this.providerManager = ProviderManager.getInstance();
@@ -147,7 +149,7 @@ export class HookExecutor {
     eventType: string
   ): Promise<void> {
     const filePath = document.uri.fsPath;
-    
+
     console.log(
       `🎯 handleFileEvent called for hook: ${hook.name}, file: ${filePath}, event: ${eventType}`
     );
@@ -267,23 +269,29 @@ export class HookExecutor {
     return matches;
   }
 
-  private async enqueueHookExecution(filePath: string, hook: Hook, context: any): Promise<void> {
+  private async enqueueHookExecution(
+    filePath: string,
+    hook: Hook,
+    context: any
+  ): Promise<void> {
     const queueKey = filePath;
-    
+
     // Get or create queue for this file
     if (!this.executionQueue.has(queueKey)) {
       this.executionQueue.set(queueKey, []);
     }
-    
+
     const queue = this.executionQueue.get(queueKey)!;
-    
+
     // Add hook to queue
     queue.push({ hook, context });
-    console.log(`📋 Added hook ${hook.name} to queue for file ${filePath}. Queue length: ${queue.length}`);
-    
+    console.log(
+      `📋 Added hook ${hook.name} to queue for file ${filePath}. Queue length: ${queue.length}`
+    );
+
     // Sort queue by priority (higher priority first)
     queue.sort((a, b) => b.hook.priority - a.hook.priority);
-    
+
     // Process queue if not already processing
     if (queue.length === 1) {
       await this.processExecutionQueue(queueKey);
@@ -295,26 +303,31 @@ export class HookExecutor {
     if (!queue || queue.length === 0) {
       return;
     }
-    
+
     console.log(`🔄 Processing execution queue for file: ${queueKey}`);
-    
+
     while (queue.length > 0) {
       const { hook, context } = queue.shift()!;
-      
+
       try {
-        console.log(`▶️ Processing hook ${hook.name} (priority: ${hook.priority}) from queue`);
+        console.log(
+          `▶️ Processing hook ${hook.name} (priority: ${hook.priority}) from queue`
+        );
         await this.scheduleHookExecution(queueKey, hook, context);
-        
+
         // Wait a bit between executions to prevent overwhelming
         if (queue.length > 0) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
       } catch (error) {
-        console.error(`❌ Error processing hook ${hook.name} from queue:`, error);
+        console.error(
+          `❌ Error processing hook ${hook.name} from queue:`,
+          error
+        );
         // Continue with next hook in queue
       }
     }
-    
+
     // Clean up empty queue
     if (queue.length === 0) {
       this.executionQueue.delete(queueKey);
@@ -322,45 +335,97 @@ export class HookExecutor {
     }
   }
 
-  private async scheduleHookExecution(filePath: string, hook: Hook, context: any): Promise<void> {
-    console.log(`📋 Scheduling hook execution: ${hook.name} for file: ${filePath}`);
-    
+  private async scheduleHookExecution(
+    filePath: string,
+    hook: Hook,
+    context: any
+  ): Promise<void> {
+    console.log(
+      `📋 Scheduling hook execution: ${hook.name} for file: ${filePath}`
+    );
+
+    // Use file-level locking to prevent race conditions
+    await this.acquireFileLock(filePath, async () => {
+      await this.executeHookWithMode(hook, filePath, context);
+    });
+  }
+
+  private async acquireFileLock(filePath: string, execution: () => Promise<void>): Promise<void> {
+    // Wait for any existing lock on this file
+    const existingLock = this.fileLocks.get(filePath);
+    if (existingLock) {
+      console.log(`🔒 Waiting for file lock on: ${filePath}`);
+      try {
+        await existingLock;
+      } catch (e) {
+        // Previous lock failed, continue
+        console.log(`⚠️ Previous file lock failed: ${e}`);
+      }
+    }
+
+    // Create new lock for this file
+    const lockPromise = this.executeWithLock(execution);
+    this.fileLocks.set(filePath, lockPromise);
+
+    try {
+      await lockPromise;
+    } finally {
+      // Clean up completed lock
+      if (this.fileLocks.get(filePath) === lockPromise) {
+        this.fileLocks.delete(filePath);
+      }
+    }
+  }
+
+  private async executeWithLock(execution: () => Promise<void>): Promise<void> {
+    return execution();
+  }
+
+  private async executeHookWithMode(
+    hook: Hook,
+    filePath: string,
+    context: any
+  ): Promise<void> {
     const hookFileKey = `${hook.id}:${filePath}`;
 
-    // Check execution mode
+    // Check execution mode (same logic as before, but now within file lock)
     switch (hook.executionMode) {
-      case 'multiple':
-        // Allow multiple executions, no restrictions
-        console.log(`🔄 Multiple execution mode - starting hook immediately`);
+      case "multiple":
+        // Allow multiple executions, no restrictions (but still sequential per file)
+        console.log(`🔄 Multiple execution mode - starting hook with file lock`);
         await this.executeHookWithChecks(hook, context);
         break;
 
-      case 'single':
+      case "single":
         // Only one execution at a time
         if (this.runningHooks.has(hook.id)) {
-          console.log(`🚫 Hook ${hook.name} is already running, ignoring new execution (single mode)`);
+          console.log(
+            `🚫 Hook ${hook.name} is already running, ignoring new execution (single mode)`
+          );
           return;
         }
-        
+
         // Check cooldown
         if (!this.canExecuteAfterCooldown(hookFileKey)) {
           return;
         }
-        
-        console.log(`▶️ Single execution mode - starting hook`);
+
+        console.log(`▶️ Single execution mode - starting hook with file lock`);
         await this.executeHookWithChecks(hook, context);
         break;
 
-      case 'restart':
+      case "restart":
         // Stop existing execution and start new one
         if (this.runningHooks.has(hook.id)) {
-          console.log(`🔄 Hook ${hook.name} is running - stopping and restarting (restart mode)`);
+          console.log(
+            `🔄 Hook ${hook.name} is running - stopping and restarting (restart mode)`
+          );
           this.stopRunningHook(hook.id);
           // Wait a bit for the previous execution to stop
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
-        
-        console.log(`🔁 Restart execution mode - starting hook`);
+
+        console.log(`🔁 Restart execution mode - starting hook with file lock`);
         await this.executeHookWithChecks(hook, context);
         break;
     }
@@ -373,12 +438,10 @@ export class HookExecutor {
 
     if (timeSinceLastExec < this.COOLDOWN_MS) {
       const remainingCooldown = this.COOLDOWN_MS - timeSinceLastExec;
-      console.log(
-        `⏳ Hook is on cooldown. ${remainingCooldown}ms remaining`
-      );
+      console.log(`⏳ Hook is on cooldown. ${remainingCooldown}ms remaining`);
       return false;
     }
-    
+
     return true;
   }
 
@@ -460,14 +523,14 @@ export class HookExecutor {
         throw new Error("Hook execution was cancelled");
       }
 
-      const response = await provider.sendMessage(prompt);
+      const response = await provider.generateResponse(prompt);
 
       // Check again before applying changes
       if (abortController.signal.aborted) {
         throw new Error("Hook execution was cancelled");
       }
 
-      await this.applyChanges(context, response.content);
+      await this.applyChanges(context, response);
 
       // Only show success if not cancelled
       if (!abortController.signal.aborted) {
@@ -479,7 +542,9 @@ export class HookExecutor {
       if (abortController.signal.aborted) {
         vscode.window.showWarningMessage(`⏹️ Hook "${hook.name}" was stopped`);
       } else {
-        vscode.window.showErrorMessage(`❌ Hook "${hook.name}" error: ${error}`);
+        vscode.window.showErrorMessage(
+          `❌ Hook "${hook.name}" error: ${error}`
+        );
       }
     } finally {
       // Clean up
@@ -617,11 +682,11 @@ export class HookExecutor {
             try {
               const document = await vscode.workspace.openTextDocument(fileUri);
               await document.save();
-              
+
               // Mark this file as hook-generated to prevent cross-triggering
               this.hookGeneratedFiles.add(targetFile);
               console.log(`🔒 Marked ${targetFile} as hook-generated`);
-              
+
               vscode.window.showInformationMessage(`📝 Updated ${targetFile}`);
             } catch (saveError) {
               console.error(`Error saving file ${targetFile}:`, saveError);
@@ -655,7 +720,7 @@ export class HookExecutor {
 
       await vscode.workspace.applyEdit(edit);
       await document.save();
-      
+
       // Mark this file as hook-generated to prevent cross-triggering
       this.hookGeneratedFiles.add(context.file);
       console.log(`🔒 Marked ${context.file} as hook-generated`);
@@ -665,7 +730,11 @@ export class HookExecutor {
     }
   }
 
-  private async notifyHookManager(hookId: string, isRunning: boolean, lastExecuted?: Date): Promise<void> {
+  private async notifyHookManager(
+    hookId: string,
+    isRunning: boolean,
+    lastExecuted?: Date
+  ): Promise<void> {
     try {
       // Dynamic import to avoid circular dependencies
       const { HookManager } = await import("./hookManager");

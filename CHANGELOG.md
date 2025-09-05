@@ -4,6 +4,40 @@ All notable changes to the "ai-agent-hooks" extension will be documented in this
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.0] - 2025-08-18
+
+### Added
+
+- **Status Bar Integration**: Real-time hook status display in VSCode status bar
+  - Shows running hook count with dynamic icons
+  - Clickable status bar item opens command palette
+  - Color-coded status indicators (running, active, inactive)
+- **Vibe Mode Chat Window**: AI-powered conversational interface
+  - Integrated in Explorer sidebar with dedicated panel
+  - MCP-enhanced conversations for project analysis
+  - Real-time hook visualization and control
+  - Project-aware chat context using MCP tools
+- **Enhanced Command System**:
+  - Quick access command palette via status bar
+  - Hook status overview with detailed information
+  - Streamlined provider and MCP configuration
+- **Improved Hook Activity Monitoring**:
+  - Real-time status updates across all interfaces
+  - Visual indicators for hook execution states
+  - Enhanced error reporting and debugging
+
+### Technical
+
+- Added `StatusBarProvider` for status bar integration
+- Added `VibeProvider` for chat interface with MCP support
+- Enhanced `HookManager` with status change events
+- Improved provider system with response generation
+- Updated extension activation with new providers
+- Implemented file-level locking system to prevent race conditions
+- Added iterative AI thinking with multi-step tool execution
+- Centralized MCP tool descriptions (DRY principle)
+- Enhanced error visibility and debugging capabilities
+
 ## [0.2.0] - 2025-08-18
 
 ### Added

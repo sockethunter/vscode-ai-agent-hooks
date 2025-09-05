@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+    <title>Vibe Mode - AI Agent Hooks</title>
+    <link rel="stylesheet" href="{{cssPath}}">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <div class="vibe-header">
+            <div class="vibe-title">
+                <span class="vibe-icon">💡</span>
+                <h1>Vibe Mode</h1>
+            </div>
+            <div class="connection-status" id="connectionStatus">
+                <span class="status-indicator offline"></span>
+                <span class="status-text">Disconnected</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="vibe-content">
+            <!-- Chat Window -->
+            <div class="chat-section">
+                <div class="chat-container">
+                    <div class="messages" id="chatMessages">
+                        <div class="system-message">
+                            <span class="system-icon">🤖</span>
+                            <div class="message-content">
+                                Welcome to Vibe Mode! I can help you manage hooks, analyze your code, and provide insights using MCP tools.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="input-container">
+                        <div class="input-wrapper">
+                            <input type="text" 
+                                   id="chatInput" 
+                                   placeholder="Ask about hooks, code analysis, or project insights..."
+                                   autocomplete="off">
+                            <button id="sendButton" type="button">
+                                <span class="send-icon">→</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hook Visualization Panel -->
+            <div class="visualization-section">
+                <div class="panel-header">
+                    <h2>Hook Activity</h2>
+                    <div class="refresh-button" id="refreshHooks">↻</div>
+                </div>
+                
+                <div class="hook-activity" id="hookActivity">
+                    <div class="activity-item">
+                        <span class="activity-status idle">●</span>
+                        <span class="activity-text">No hooks running</span>
+                    </div>
+                </div>
+
+                <div class="hook-list" id="hookList">
+                    <!-- Hook items will be populated dynamically -->
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="action-btn" id="createHookBtn">
+                        <span>+</span> New Hook
+                    </button>
+                    <button class="action-btn" id="manageHooksBtn">
+                        <span>⚙</span> Manage
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MCP Tools Panel -->
+        <div class="mcp-tools" id="mcpTools">
+            <div class="tools-header">
+                <h3>MCP Tools Configuration</h3>
+                <div class="tools-toggle" id="toolsToggle">▼</div>
+            </div>
+            <div class="tools-list" id="toolsList">
+                <!-- Tools will be populated dynamically with checkboxes -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Processing...</div>
+    </div>
+
+    <script src="{{scriptPath}}"></script>
+</body>
+</html>

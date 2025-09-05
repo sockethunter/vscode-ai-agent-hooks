@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { HookExecutor } from "./hookExecutor";
 import { FileUtils } from "./utils/fileUtils";
 
-export type HookExecutionMode = 'multiple' | 'single' | 'restart';
+export type HookExecutionMode = "multiple" | "single" | "restart";
 
 export interface Hook {
   id: string;
@@ -30,7 +30,11 @@ export class HookManager {
   private hooks: Hook[] = [];
   private context: vscode.ExtensionContext;
   private hookExecutor: HookExecutor;
-  private readonly HOOKS_FILE = 'hooks.json';
+  private readonly HOOKS_FILE = "hooks.json";
+
+  // Event emitter for status changes
+  private _onHookStatusChanged = new vscode.EventEmitter<void>();
+  public readonly onHookStatusChanged = this._onHookStatusChanged.event;
 
   private constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -40,7 +44,9 @@ export class HookManager {
   public static getInstance(context?: vscode.ExtensionContext): HookManager {
     if (!HookManager.instance) {
       if (!context) {
-        throw new Error("HookManager not initialized. Context required for first initialization.");
+        throw new Error(
+          "HookManager not initialized. Context required for first initialization."
+        );
       }
       HookManager.instance = new HookManager(context);
     }
@@ -49,15 +55,15 @@ export class HookManager {
 
   public async initialize(): Promise<void> {
     console.log("🚀 Initializing HookManager...");
-    
+
     // Ensure storage directory exists
     const storagePath = this.context.globalStorageUri.fsPath;
     console.log(`📁 Extension storage path: ${storagePath}`);
     await FileUtils.ensureDirectoryExists(storagePath);
-    
+
     const hooksFilePath = this.getHooksFilePath();
     console.log(`📁 Hooks file path: ${hooksFilePath}`);
-    
+
     await this.loadHooks();
     console.log("✅ HookManager initialization completed");
   }
@@ -69,9 +75,9 @@ export class HookManager {
   // WebView interface methods
   public async createHookFromWebview(data: any): Promise<void> {
     // Get MCP configuration from settings
-    const config = vscode.workspace.getConfiguration('aiAgentHooks.mcp');
-    const mcpEnabled = config.get<boolean>('enabled', false);
-    const defaultTools = config.get<string[]>('defaultTools', []);
+    const config = vscode.workspace.getConfiguration("aiAgentHooks.mcp");
+    const mcpEnabled = config.get<boolean>("enabled", false);
+    const defaultTools = config.get<string[]>("defaultTools", []);
 
     const hook: Hook = {
       id: this.generateId(),
@@ -85,7 +91,7 @@ export class HookManager {
       isRunning: false,
       createdAt: new Date(),
       // Execution control
-      executionMode: data.executionMode || 'single', // Default to single execution
+      executionMode: data.executionMode || "single", // Default to single execution
       priority: data.priority || 0, // Default priority
       // MCP Configuration
       mcpEnabled: data.mcpEnabled || mcpEnabled,
@@ -95,7 +101,7 @@ export class HookManager {
 
     this.hooks.push(hook);
     await this.saveHooks();
-    
+
     if (hook.isActive) {
       this.hookExecutor.registerHook(hook);
     }
@@ -110,15 +116,16 @@ export class HookManager {
     const hook = this.hooks.find((h) => h.id === hookId);
     if (hook) {
       hook.isActive = !hook.isActive;
-      
+
       if (hook.isActive) {
         this.hookExecutor.registerHook(hook);
       } else {
         this.hookExecutor.unregisterHook(hookId);
       }
-      
+
       await this.saveHooks();
       this.broadcastHookUpdate();
+      this._onHookStatusChanged.fire(); // Fire status change event for Vibe Mode
     }
   }
 
@@ -127,6 +134,7 @@ export class HookManager {
     this.hooks = this.hooks.filter((h) => h.id !== hookId);
     await this.saveHooks();
     this.broadcastHookUpdate();
+    this._onHookStatusChanged.fire(); // Fire status change event for Vibe Mode
   }
 
   public async stopHookFromWebview(hookId: string): Promise<void> {
@@ -135,12 +143,12 @@ export class HookManager {
     if (hook) {
       // Stop the actual execution in HookExecutor
       this.hookExecutor.stopRunningHook(hookId);
-      
+
       // Update status
       hook.isRunning = false;
       await this.saveHooks();
       this.broadcastHookUpdate();
-      
+
       vscode.window.showInformationMessage(
         `⏹️ Hook "${hook.name}" stop requested`
       );
@@ -194,9 +202,13 @@ export class HookManager {
     );
   }
 
-  public updateHookStatus(hookId: string, isRunning: boolean, lastExecuted?: Date): void {
+  public updateHookStatus(
+    hookId: string,
+    isRunning: boolean,
+    lastExecuted?: Date
+  ): void {
     console.log(`🔄 Updating hook status: ${hookId} - Running: ${isRunning}`);
-    const hook = this.hooks.find(h => h.id === hookId);
+    const hook = this.hooks.find((h) => h.id === hookId);
     if (hook) {
       hook.isRunning = isRunning;
       if (lastExecuted) {
@@ -204,7 +216,10 @@ export class HookManager {
       }
       this.saveHooks();
       this.broadcastHookUpdate();
-      console.log(`✅ Hook status updated and broadcast sent for: ${hook.name}`);
+      this._onHookStatusChanged.fire(); // Fire status change event
+      console.log(
+        `✅ Hook status updated and broadcast sent for: ${hook.name}`
+      );
     } else {
       console.log(`❌ Hook with ID ${hookId} not found`);
     }
@@ -212,11 +227,13 @@ export class HookManager {
 
   private broadcastHookUpdate(): void {
     // Dynamic import to avoid circular dependencies
-    import("./views/hookManagerProvider").then(({ HookManagerProvider }) => {
-      HookManagerProvider.broadcastHookUpdate(this.hooks);
-    }).catch(error => {
-      console.error("Error broadcasting hook update:", error);
-    });
+    import("./views/hookManagerProvider")
+      .then(({ HookManagerProvider }) => {
+        HookManagerProvider.broadcastHookUpdate(this.hooks);
+      })
+      .catch((error) => {
+        console.error("Error broadcasting hook update:", error);
+      });
   }
 
   public async executeHook(hook: Hook, context: any): Promise<void> {
@@ -233,15 +250,18 @@ export class HookManager {
       "",
       "export async function execute(context: any) {",
       "  console.log('Hook executed:', '" + data.name + "');",
-      "  // TODO: Implement AI-generated logic based on: " + data.naturalLanguage,
-      "}"
+      "  // TODO: Implement AI-generated logic based on: " +
+        data.naturalLanguage,
+      "}",
     ].join("\n");
-    
+
     return template;
   }
 
   private generateId(): string {
-    return Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+    return (
+      Math.random().toString(36).substring(2, 11) + Date.now().toString(36)
+    );
   }
 
   private getHooksFilePath(): string {
@@ -252,15 +272,17 @@ export class HookManager {
     try {
       const hooksPath = this.getHooksFilePath();
       console.log(`📂 Loading hooks from: ${hooksPath}`);
-      
+
       const data = await FileUtils.readJsonFile<Hook[]>(hooksPath);
       this.hooks = data || [];
-      
+
       console.log(`📋 Loaded ${this.hooks.length} hooks from storage`);
-      
+
       // Register active hooks with executor
-      this.hooks.forEach(hook => {
-        console.log(`🔄 Processing hook: ${hook.name} - Active: ${hook.isActive}`);
+      this.hooks.forEach((hook) => {
+        console.log(
+          `🔄 Processing hook: ${hook.name} - Active: ${hook.isActive}`
+        );
         if (hook.isActive) {
           console.log(`🚀 Registering active hook: ${hook.name}`);
           this.hookExecutor.registerHook(hook);
@@ -268,7 +290,7 @@ export class HookManager {
           console.log(`😴 Skipping inactive hook: ${hook.name}`);
         }
       });
-      
+
       console.log(`✅ Hook loading completed. Active hooks registered.`);
     } catch (error) {
       console.error("Error loading hooks:", error);
@@ -286,95 +308,63 @@ export class HookManager {
   }
 
   public async getAvailableMcpTools(): Promise<string[]> {
-    const config = vscode.workspace.getConfiguration('aiAgentHooks.mcp');
-    const allowedTools = config.get<string[]>('allowedTools', []);
-    
+    const config = vscode.workspace.getConfiguration("aiAgentHooks.mcp");
+    const allowedTools = config.get<string[]>("allowedTools", []);
+
     // If no allowed tools configured, return all available tools for this project
     if (allowedTools.length === 0) {
       const workspaceRoot = this.getWorkspaceRoot();
       if (workspaceRoot) {
-        const { McpClient } = await import('./mcp/mcpClient');
+        const { McpClient } = await import("./mcp/mcpClient");
         const mcpClient = McpClient.getInstance();
         return await mcpClient.getValidatedToolsForProject(workspaceRoot);
       }
       return [];
     }
-    
+
     return allowedTools;
   }
 
   public getDefaultMcpTools(): string[] {
-    const config = vscode.workspace.getConfiguration('aiAgentHooks.mcp');
-    const defaultTools = config.get<string[]>('defaultTools', []);
-    
+    const config = vscode.workspace.getConfiguration("aiAgentHooks.mcp");
+    const defaultTools = config.get<string[]>("defaultTools", []);
+
     // If no default tools configured, return common safe tools
     if (defaultTools.length === 0) {
-      return [
-        'mcp_filesystem_list',
-        'mcp_filesystem_read',
-        'mcp_search_find'
-      ];
+      return ["mcp_filesystem_list", "mcp_filesystem_read", "mcp_search_find"];
     }
-    
+
     return defaultTools;
   }
 
   public isMcpEnabled(): boolean {
-    const config = vscode.workspace.getConfiguration('aiAgentHooks.mcp');
-    return config.get<boolean>('enabled', false);
+    const config = vscode.workspace.getConfiguration("aiAgentHooks.mcp");
+    return config.get<boolean>("enabled", false);
   }
 
   public async getProjectSpecificMcpTools(): Promise<{
     available: string[];
-    recommended: string[];
     descriptions: Record<string, string>;
   }> {
     const workspaceRoot = this.getWorkspaceRoot();
     if (!workspaceRoot) {
-      return { available: [], recommended: [], descriptions: {} };
+      return { available: [], descriptions: {} };
     }
 
-    const { McpClient } = await import('./mcp/mcpClient');
+    const { McpClient } = await import("./mcp/mcpClient");
     const mcpClient = McpClient.getInstance();
     const available = await mcpClient.getValidatedToolsForProject(workspaceRoot);
-    
-    // Recommend tools based on project structure
-    const recommended: string[] = [];
-    const fs = require('fs').promises;
-    const path = require('path');
 
-    try {
-      // Always recommend basic tools
-      recommended.push('mcp_filesystem_list', 'mcp_filesystem_read');
-      
-      // Check for Git repository
-      try {
-        await fs.access(path.join(workspaceRoot, '.git'));
-        recommended.push('mcp_git_status', 'mcp_git_log');
-      } catch {}
-      
-      // Check for package.json (Node.js project)
-      try {
-        await fs.access(path.join(workspaceRoot, 'package.json'));
-        recommended.push('mcp_search_find', 'mcp_search_grep');
-      } catch {}
-      
-    } catch {}
-
-    const descriptions = {
-      'mcp_filesystem_list': 'List directory contents and explore project structure',
-      'mcp_filesystem_read': 'Read single file contents',
-      'mcp_filesystem_read_multiple': 'Read multiple files simultaneously for comparison',
-      'mcp_search_find': 'Find files by name patterns (glob matching)',
-      'mcp_search_grep': 'Search for text patterns across files',
-      'mcp_git_status': 'Get current Git repository status',
-      'mcp_git_log': 'View Git commit history'
-    };
+    // Get descriptions from mcpClient (single source of truth)
+    const descriptions: Record<string, string> = {};
+    for (const toolName of available) {
+      const tool = mcpClient.getRegisteredTool(toolName);
+      descriptions[toolName] = tool?.description || `MCP tool: ${toolName}`;
+    }
 
     return {
-      available: available.filter(tool => recommended.includes(tool) || available.includes(tool)),
-      recommended: recommended.filter(tool => available.includes(tool)),
-      descriptions
+      available,
+      descriptions,
     };
   }
 
@@ -384,6 +374,84 @@ export class HookManager {
       return workspaceFolders[0].uri.fsPath;
     }
     return null;
+  }
+
+  public async executeMcpToolForChat(
+    toolName: string,
+    params: any
+  ): Promise<any> {
+    const workspaceRoot = this.getWorkspaceRoot();
+    if (!workspaceRoot) {
+      throw new Error("No workspace available for MCP tool execution");
+    }
+
+    const { McpClient } = await import("./mcp/mcpClient");
+    const mcpClient = McpClient.getInstance();
+
+    const allowedTools = await this.getAvailableMcpTools();
+    console.log("🔧 Available MCP tools for Vibe Mode:", allowedTools);
+
+    const executionContext = {
+      workspaceRoot,
+      triggeredFile: "",
+      hookId: "vibe-mode-chat",
+      allowedTools: allowedTools,
+    };
+
+    return await mcpClient.executeTool(toolName, params, executionContext);
+  }
+
+  public formatMcpToolResult(toolName: string, result: any): string {
+    switch (toolName) {
+      case "mcp_filesystem_list":
+        if (result && Array.isArray(result)) {
+          const files = result
+            .filter((item) => item.type === "file")
+            .slice(0, 20);
+          const dirs = result
+            .filter((item) => item.type === "directory")
+            .slice(0, 10);
+          return `📁 **Directory Contents:**\n**Directories:** ${dirs
+            .map((d) => d.name)
+            .join(", ")}\n**Files:** ${files.map((f) => f.name).join(", ")}`;
+        }
+        break;
+
+      case "mcp_filesystem_read":
+        if (result && result.content) {
+          const preview =
+            result.content.length > 500
+              ? result.content.substring(0, 500) + "..."
+              : result.content;
+          return `📄 **File: ${result.path}**\n\`\`\`\n${preview}\n\`\`\``;
+        }
+        break;
+
+      case "mcp_search_find":
+        if (result && result.matches) {
+          const matchList = result.matches
+            .slice(0, 15)
+            .map((path: string) => `• ${path.split("/").pop()}`)
+            .join("\n");
+          return `🔍 **Found ${result.count} files:**\n${matchList}`;
+        }
+        break;
+
+      case "mcp_git_status":
+        if (result && result.files) {
+          if (result.files.length === 0) {
+            return `✅ **Git Status:** Working directory clean`;
+          }
+          const fileList = result.files
+            .slice(0, 10)
+            .map((file: any) => `• ${file.status} ${file.filename}`)
+            .join("\n");
+          return `📊 **Git Status:** ${result.files.length} changes\n${fileList}`;
+        }
+        break;
+    }
+
+    return `🔧 **${toolName}:** ${JSON.stringify(result)}`;
   }
 
   public dispose(): void {

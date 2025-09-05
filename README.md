@@ -138,16 +138,19 @@ Multi-Step: ✅ Analyzes entire project structure and existing README before upd
 Control how your hooks behave when triggered multiple times or when multiple hooks target the same file:
 
 ### 🔒 Single Mode (Default)
+
 - **Behavior**: Only one execution at a time per hook
 - **Use Case**: Resource-intensive operations, file modifications that require exclusive access
 - **Example**: Large file refactoring, database operations
 
-### 🔄 Multiple Mode  
+### 🔄 Multiple Mode
+
 - **Behavior**: Allow multiple parallel executions of the same hook
 - **Use Case**: Independent operations, logging, notifications
 - **Example**: Code formatting, syntax checking, file analysis
 
 ### 🔁 Restart Mode
+
 - **Behavior**: Stop current execution and restart with new trigger
 - **Use Case**: Frequently changing files, real-time processing
 - **Example**: Live documentation updates, incremental compilation
@@ -158,14 +161,15 @@ When multiple hooks target the same file, they execute sequentially by priority:
 
 ```
 Priority 10: High-priority hook (documentation)
-Priority 5:  Medium-priority hook (formatting) 
+Priority 5:  Medium-priority hook (formatting)
 Priority 1:  Low-priority hook (logging)
 ```
 
 **Example Configuration:**
+
 ```
 Hook A: "Format code" - Priority: 10, Mode: Single
-Hook B: "Add logging" - Priority: 5, Mode: Multiple  
+Hook B: "Add logging" - Priority: 5, Mode: Multiple
 Hook C: "Update docs" - Priority: 1, Mode: Restart
 ```
 
@@ -197,7 +201,7 @@ Configure AI Agent Hooks through VSCode settings:
   "aiAgentHooks.mcp.enabled": true,
   "aiAgentHooks.mcp.defaultTools": [
     "mcp_filesystem_list",
-    "mcp_filesystem_read", 
+    "mcp_filesystem_read",
     "mcp_search_find",
     "mcp_git_status"
   ],
@@ -205,7 +209,7 @@ Configure AI Agent Hooks through VSCode settings:
     "mcp_filesystem_list",
     "mcp_filesystem_read",
     "mcp_filesystem_read_multiple",
-    "mcp_search_find", 
+    "mcp_search_find",
     "mcp_search_grep",
     "mcp_git_status",
     "mcp_git_log"
@@ -215,12 +219,23 @@ Configure AI Agent Hooks through VSCode settings:
 
 ## 🎮 Commands
 
-| Command                              | Description                         |
-| ------------------------------------ | ----------------------------------- |
-| `AI Agent Hooks: Choose AI Provider` | Select and configure AI provider    |
-| `AI Agent Hooks: Test AI Provider`   | Test current AI provider connection |
-| `AI Agent Hooks: Open Hook Manager`  | Open visual Hook Manager interface  |
+| Command                               | Description                          |
+| ------------------------------------- | ------------------------------------ |
+| `AI Agent Hooks: Choose AI Provider`  | Select and configure AI provider     |
+| `AI Agent Hooks: Test AI Provider`    | Test current AI provider connection  |
+| `AI Agent Hooks: Open Hook Manager`   | Open visual Hook Manager interface   |
 | `AI Agent Hooks: Configure MCP Tools` | Configure MCP tools for this project |
+| `AI Agent Hooks: Open Vibe Mode` ⭐   | Open AI chat interface with MCP      |
+
+### Status Bar Quick Actions
+
+Click the **HookFlow** status bar item for quick access to:
+
+- 🛠️ Manage Hooks
+- ⚙️ Configure AI Provider
+- 🧪 Test AI Provider
+- 📋 Hook Status Overview
+- 🔧 Configure MCP Tools
 
 ## 🏗️ Architecture
 
@@ -242,8 +257,6 @@ Configure AI Agent Hooks through VSCode settings:
 
 ## 🧪 Testing
 
-Comprehensive test suite with **96 passing tests** and **100% code coverage**:
-
 ```bash
 npm test                    # Run all tests
 npm run test:coverage       # Run tests with coverage report
@@ -251,24 +264,11 @@ npm run compile            # Compile TypeScript
 npm run lint              # Check code style
 ```
 
-### Test Coverage
-
-- ✅ Hook Management (CRUD operations, persistence)
-- ✅ Hook Execution (triggers, patterns, cooldowns)  
-- ✅ **NEW:** Execution Modes (single, multiple, restart)
-- ✅ **NEW:** Priority-based Sequential Execution
-- ✅ **NEW:** Queue Management & Error Handling
-- ✅ AI Provider Integration (all provider types)
-- ✅ WebView Communication (real-time updates)
-- ✅ File Operations (cross-platform compatibility)
-
 ## 🔒 Security & Safety
 
 ### Built-in Protection
 
-- **No Secret Logging**: API keys never appear in logs
 - **Local Storage**: Hooks stored locally in VSCode settings
-- **Permission Control**: Only modifies files based on explicit patterns
 - **Execution Limits**: Cooldown prevents runaway executions
 
 ### Best Practices
@@ -307,12 +307,13 @@ Current: Simple transformation\
 
 Missing: Complex agent workflow\
  "Refactor this component following project patterns" →
-  1. List project files to understand structure (ls, find)
-  2. Read similar components for pattern analysis
-  3. Execute git status to check for uncommitted changes
-  4. Extract common patterns from multiple files
-  5. Apply consistent architecture with context awareness
-  6. Update related tests and documentation files
+
+1. List project files to understand structure (ls, find)
+2. Read similar components for pattern analysis
+3. Execute git status to check for uncommitted changes
+4. Extract common patterns from multiple files
+5. Apply consistent architecture with context awareness
+6. Update related tests and documentation files
 
 Impact on Use Cases
 
@@ -334,21 +335,25 @@ Hook Trigger → MCP Client → AI Model with Tools → Multi-Step Execution →
 ### MCP-Enabled Capabilities
 
 **File System Tools**
+
 - `mcp_filesystem`: List directories, explore project structure
 - `mcp_search`: Advanced file searching with grep, ripgrep
 - `mcp_git`: Git operations (status, log, diff) for context
 
 **Multi-File Operations**
+
 - Read multiple related files simultaneously
 - Cross-reference imports, exports, and dependencies
 - Analyze test patterns across the codebase
 
 **Configurable Tool Access**
+
 - Whitelist system for allowed MCP tools
 - Security boundaries for safe command execution
 - User-controlled permission levels per hook
 
 **Agent Workflow Example**
+
 ```
 "Refactor component following project patterns" →
 1. mcp_filesystem.list() - Explore project structure
@@ -371,6 +376,7 @@ Hook Trigger → MCP Client → AI Model with Tools → Multi-Step Execution →
 ### Current Status: MCP Available
 
 The Hook Manager now includes:
+
 - ✅ **Visual MCP Configuration** in the UI
 - ✅ **Project-Specific Tool Detection** (Git tools for Git repos, etc.)
 - ✅ **Multi-Step Execution** with context awareness
@@ -395,10 +401,14 @@ Simply check "Enable MCP" when creating hooks to access sophisticated AI agent w
   - ✅ Queue management for multiple hooks on same file
   - ✅ Enhanced execution control and safety features
   - ✅ Comprehensive test coverage (96 tests, 100% coverage)
-- 🎨 **v0.3.0**: Enhanced Analytics & Debugging
-  - 🎨 Real-time execution step visualization
-  - 📊 Hook performance analytics
-  - 🔍 MCP execution debugging tools
+- 🎨 **v0.3.0**: Enhanced Analytics & Debugging ✅ IMPLEMENTED
+  - ✅ **Vibe Mode**: AI-powered chat interface with MCP integration
+  - ✅ **Status Bar Integration**: Real-time hook status display and quick access
+  - ✅ **Enhanced Command System**: Quick access palette via status bar
+  - ✅ **File-Level Locking**: Race condition prevention for multiple hooks
+  - ✅ **Iterative AI Thinking**: Multi-step tool planning and execution
+  - ✅ **MCP Tool Configuration UI**: Direct tool activation in chat interface
+  - ✅ **Error Transparency**: Visible tool failures and debugging info
 - 🌟 **v0.4.0**: Advanced Features
   - 🔌 Custom MCP tool plugins
   - 🤝 Team hook sharing and templates

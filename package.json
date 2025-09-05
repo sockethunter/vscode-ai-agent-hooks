@@ -2,7 +2,7 @@
   "name": "ai-agent-hooks",
   "displayName": "HookFlow - AI Agent Hooks",
   "description": "Automated event-driven AI agent hooks for VSCode",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "sockethunter",
   "icon": "images/mascot.png",
   "repository": {
@@ -17,7 +17,7 @@
     "Other"
   ],
   "activationEvents": [
-    "*"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -40,6 +40,11 @@
       {
         "command": "ai-agent-hooks.configureMcp",
         "title": "Configure MCP Tools",
+        "category": "HookFlow - AI Agent Hooks"
+      },
+      {
+        "command": "ai-agent-hooks.openVibe",
+        "title": "Open Vibe Mode",
         "category": "HookFlow - AI Agent Hooks"
       }
     ],
@@ -141,8 +146,8 @@
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test",
-    "test:coverage": "c8 --reporter=text --reporter=html --reporter=lcov npm test",
-    "test:coverage-ci": "c8 --reporter=lcov --reporter=text-summary npm test",
+    "test:coverage": "c8 --src=out --exclude='out/test/**' --exclude='out/webview/**' --exclude='eslint.config.mjs' --reporter=text --reporter=html --reporter=lcov npm test",
+    "test:coverage-ci": "c8 --src=out --exclude='out/test/**' --exclude='out/webview/**' --exclude='eslint.config.mjs' --reporter=lcov --reporter=text-summary npm test",
     "package": "npm run compile && vsce package"
   },
   "devDependencies": {

@@ -3,7 +3,13 @@ import { ProviderManager } from "./providers/providerManager";
 import { HookManager } from "./hookManager";
 import { HookExecutor } from "./hookExecutor";
 import { HookManagerProvider } from "./views/hookManagerProvider";
+import { StatusBarProvider } from "./views/statusBarProvider";
+import { VibeProvider } from "./views/vibeProvider";
+import { McpClient } from "./mcp/mcpClient";
 import { COMMANDS } from "./constants/commands";
+
+// Global variable to store the Vibe Provider instance
+let globalVibeProvider: VibeProvider | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
   console.log("🚀 HookFlow - AI Agent Hooks extension is now active!");
@@ -13,6 +19,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const providerManager = ProviderManager.getInstance();
   const hookManager = HookManager.getInstance(context);
   const hookExecutor = HookExecutor.getInstance();
+  const mcpClient = McpClient.getInstance();
 
   // Initialize provider from saved config
   console.log("🔧 Initializing provider from config...");
@@ -33,6 +40,35 @@ export async function activate(context: vscode.ExtensionContext) {
       `   - ${hook.name} (${hook.trigger}) - Pattern: ${hook.filePattern}`
     );
   });
+
+  // Initialize providers
+  console.log("🎨 Initializing providers...");
+
+  try {
+    // Status Bar Provider
+    console.log("📊 Creating Status Bar Provider...");
+    const statusBarProvider = new StatusBarProvider();
+    statusBarProvider.initialize(hookManager);
+    console.log("✅ Status Bar Provider initialized");
+
+    // Vibe Provider (Chat Window) - Store as global instance
+    console.log("💬 Creating Vibe Provider...");
+    const vibeProvider = new VibeProvider(context);
+    console.log("🔧 Initializing Vibe Provider with managers...");
+    vibeProvider.initialize(hookManager, providerManager, mcpClient);
+    console.log("✅ Vibe Provider initialized");
+
+    // Store vibeProvider globally for later use in commands
+    globalVibeProvider = vibeProvider;
+
+    // Add providers to cleanup
+    context.subscriptions.push(statusBarProvider, vibeProvider);
+  } catch (error) {
+    console.error("❌ Error initializing providers:", error);
+    vscode.window.showErrorMessage(
+      `HookFlow: Failed to initialize providers - ${error}`
+    );
+  }
 
   // Note: HookManagerProvider will be instantiated per webview panel
 
@@ -112,7 +148,7 @@ export async function activate(context: vscode.ExtensionContext) {
         const items = toolConfig.available.map((tool) => ({
           label: tool,
           description: toolConfig.descriptions[tool] || "",
-          picked: toolConfig.recommended.includes(tool),
+          picked: false, // No pre-selection
         }));
 
         const selected = await vscode.window.showQuickPick(items, {
@@ -155,12 +191,100 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // Command to show hook status
+  const showHookStatusCommand = vscode.commands.registerCommand(
+    "ai-agent-hooks.showHookStatus",
+    async () => {
+      const items = hooks.map((hook) => ({
+        label: `${hook.isRunning ? "🔄" : hook.isActive ? "✅" : "❌"} ${
+          hook.name
+        }`,
+        description: `${hook.trigger} | ${hook.filePattern}`,
+        detail: hook.description,
+      }));
+
+      if (items.length === 0) {
+        vscode.window.showInformationMessage("No hooks configured");
+        return;
+      }
+
+      await vscode.window.showQuickPick(items, {
+        placeHolder: "Hook Status Overview",
+      });
+    }
+  );
+
+  // Command for status bar clicks
+  const showCommandsCommand = vscode.commands.registerCommand(
+    "ai-agent-hooks.showCommands",
+    async () => {
+      const items = [
+        {
+          label: "$(gear) Manage Hooks",
+          description: "Open the Hook Manager interface",
+          command: COMMANDS.MANAGE_HOOKS,
+        },
+        {
+          label: "$(settings-gear) Configure AI Provider",
+          description: "Select and configure AI provider",
+          command: COMMANDS.SELECT_PROVIDER,
+        },
+        {
+          label: "$(play) Test AI Provider",
+          description: "Test current AI provider connection",
+          command: COMMANDS.TEST_PROVIDER,
+        },
+        {
+          label: "$(list-unordered) Hook Status",
+          description: "View detailed hook status",
+          command: "ai-agent-hooks.showHookStatus",
+        },
+        {
+          label: "$(tools) Configure MCP Tools",
+          description: "Configure MCP tools for enhanced functionality",
+          command: "ai-agent-hooks.configureMcp",
+        },
+      ];
+
+      const selected = await vscode.window.showQuickPick(items, {
+        placeHolder: "Choose an action",
+      });
+
+      if (selected) {
+        vscode.commands.executeCommand(selected.command);
+      }
+    }
+  );
+
+  // Command to open Vibe Mode (creates webview panel)
+  const openVibeCommand = vscode.commands.registerCommand(
+    "ai-agent-hooks.openVibe",
+    async () => {
+      try {
+        console.log("🚀 Opening Vibe Mode panel...");
+        if (globalVibeProvider) {
+          globalVibeProvider.createPanel();
+          console.log("✅ Vibe Mode panel created successfully");
+        } else {
+          console.error("❌ Vibe Provider not found");
+          vscode.window.showErrorMessage("Vibe Provider not available");
+        }
+      } catch (error) {
+        console.error("❌ Error opening Vibe Mode:", error);
+        vscode.window.showErrorMessage(`Could not open Vibe Mode: ${error}`);
+      }
+    }
+  );
+
   // Register all commands
   context.subscriptions.push(
     selectProviderCommand,
     testProviderCommand,
     manageHooksCommand,
-    configureMcpCommand
+    configureMcpCommand,
+    showHookStatusCommand,
+    showCommandsCommand,
+    openVibeCommand
   );
 
   // Clean up on deactivation
@@ -176,4 +300,7 @@ export async function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
   const hookExecutor = HookExecutor.getInstance();
   hookExecutor.dispose();
+
+  // Clean up global references
+  globalVibeProvider = undefined;
 }

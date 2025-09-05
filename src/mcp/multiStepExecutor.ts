@@ -107,16 +107,13 @@ export class MultiStepExecutor {
     const availableTools = this.mcpClient.getAvailableTools()
       .filter(tool => context.allowedTools.includes(tool));
 
-    const toolDescriptions: Record<string, string> = {
-      'mcp_filesystem_list': 'List directory contents',
-      'mcp_filesystem_read': 'Read single file contents', 
-      'mcp_filesystem_read_multiple': 'Read multiple files at once',
-      'mcp_filesystem_write': 'Write content to files',
-      'mcp_search_find': 'Find files by glob pattern',
-      'mcp_search_grep': 'Search text patterns in files',
-      'mcp_git_status': 'Get git repository status',
-      'mcp_git_log': 'Get git commit history'
-    };
+    // Get tool descriptions from mcpClient (single source of truth)
+    const mcpClient = McpClient.getInstance();
+    const toolDescriptions: Record<string, string> = {};
+    for (const toolName of context.allowedTools) {
+      const tool = mcpClient.getRegisteredTool(toolName);
+      toolDescriptions[toolName] = tool?.description || `MCP tool: ${toolName}`;
+    }
 
     return `You are an AI agent planning a multi-step code modification task.
 

@@ -158,6 +158,10 @@ export class McpClient {
     return Array.from(this.registeredTools.keys());
   }
 
+  public getRegisteredTool(toolName: string): { name: string; description: string; schema: any; handler: Function } | undefined {
+    return this.registeredTools.get(toolName);
+  }
+
   public async getValidatedToolsForProject(workspaceRoot: string): Promise<string[]> {
     const allTools = this.getAvailableTools();
     const validTools: string[] = [];
@@ -191,6 +195,7 @@ export class McpClient {
         case 'mcp_filesystem_list':
         case 'mcp_filesystem_read':
         case 'mcp_filesystem_read_multiple':
+        case 'mcp_filesystem_write':
         case 'mcp_search_find':
         case 'mcp_search_grep':
           // These tools work in any directory
@@ -418,7 +423,7 @@ export class McpClient {
   }
 
   private async handleSearchGrep(params: any): Promise<any> {
-    const { pattern, filePattern = '**/*', caseSensitive = false, context } = params;
+    const { pattern, filePattern = '**/*', caseSensitive = false } = params;
     const vscode = require('vscode');
     const fs = require('fs').promises;
 
