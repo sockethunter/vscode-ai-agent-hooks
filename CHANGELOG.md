@@ -4,6 +4,13 @@ All notable changes to the "ai-agent-hooks" extension will be documented in this
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.2] - 2025-09-07
+
+### Added
+
+- keywords in package.json
+- badges & download button in readme
+
 ## [0.3.1] - 2025-09-06
 
 ### Fixed
