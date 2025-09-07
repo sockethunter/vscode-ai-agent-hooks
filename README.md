@@ -1,5 +1,11 @@
 # 🔗 HookFlow - AI Agent Hooks
 
+![Visual Studio Marketplace Downloads](https://badgen.net/vs-marketplace/d/sockethunter.ai-agent-hooks)
+![Visual Studio Marketplace Version](https://badgen.net/vs-marketplace/v/sockethunter.ai-agent-hooks)
+![Visual Studio Marketplace Rating](https://badgen.net/vs-marketplace/rating/sockethunter.ai-agent-hooks)
+
+[Install from Marketplace](https://marketplace.visualstudio.com/items?itemName=sockethunter.ai-agent-hooks)
+
 **Automated event-driven AI agent hooks for Visual Studio Code**
 
 Transform your development workflow with intelligent automation! AI Agent Hooks allows you to create smart hooks that automatically trigger AI-powered code modifications based on file events using natural language descriptions.

@@ -16,6 +16,27 @@
     "Machine Learning",
     "Other"
   ],
+  "keywords": [
+    "ai",
+    "automation",
+    "hooks",
+    "agent",
+    "event-driven",
+    "code-generation",
+    "documentation",
+    "tests",
+    "refactoring",
+    "machine-learning",
+    "natural-language",
+    "workflow",
+    "productivity",
+    "developer-tools",
+    "mcp",
+    "openai",
+    "anthropic",
+    "ollama",
+    "azure"
+  ],
   "activationEvents": [
     "onStartupFinished"
   ],
